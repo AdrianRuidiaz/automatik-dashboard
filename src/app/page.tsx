@@ -17,6 +17,8 @@ import Link from "next/link";
 import { ArrowRight, FileText, RefreshCw } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
+const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
+
 export default function HomePage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
@@ -113,7 +115,7 @@ export default function HomePage() {
                             p.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark"
                           )}>{p.plataforma === "ML" ? "ML" : "FA"}</span>
                         </td>
-                        <td className="px-2 py-2">{p.cliente_nombre ?? "\u2014"}</td>
+                        <td className="px-2 py-2">{p.cliente_nombre ?? "—"}</td>
                         <td className="px-2 py-2">{formatCLP(p.total_pagado)}</td>
                         <td className="px-2 py-2">
                           <span className={cn("rounded px-2 py-0.5 text-[11px]", ESTADO_COLORS[p.estado])}>
@@ -122,10 +124,10 @@ export default function HomePage() {
                         </td>
                         <td className="px-2 py-2">
                           {p.etiqueta_url ? (
-                            <button onClick={() => window.open(p.etiqueta_url!, "_blank")} className="inline-flex items-center gap-1 rounded border border-input px-2 py-0.5 text-xs text-muted-foreground">
+                            <button onClick={() => window.open(pdfUrl(p.etiqueta_url!), "_blank")} className="inline-flex items-center gap-1 rounded border border-input px-2 py-0.5 text-xs text-muted-foreground">
                               <FileText className="h-3.5 w-3.5 text-red-500" /> PDF
                             </button>
-                          ) : <span className="text-xs text-muted-foreground">\u2014</span>}
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
                         </td>
                       </tr>
                     ))}
