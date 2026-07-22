@@ -12,6 +12,8 @@ import { supabase } from "@/lib/supabase";
 import type { Pedido, Plataforma, Archivo } from "@/lib/types";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
+const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
+
 interface OrdersTableProps { pedidos: Pedido[]; }
 
 function OrderDetail({ pedido }: { pedido: Pedido }) {
@@ -72,11 +74,11 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           </h4>
           {pedido.etiqueta_url ? (
             <div className="flex flex-col gap-2">
-              <a href={pedido.etiqueta_url} target="_blank" rel="noopener noreferrer"
+              <a href={pdfUrl(pedido.etiqueta_url!)} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors">
                 <FileText className="h-4 w-4 text-red-500 shrink-0" /> Descargar PDF
               </a>
-              <a href={pedido.etiqueta_url} target="_blank" rel="noopener noreferrer"
+              <a href={pdfUrl(pedido.etiqueta_url!)} target="_blank" rel="noopener noreferrer"
                 className="text-xs text-muted-foreground hover:text-foreground">Abrir en nueva pestana</a>
             </div>
           ) : <p className="text-xs text-muted-foreground">Sin etiqueta disponible</p>}
@@ -191,7 +193,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
       id: "etiqueta", header: "PDF",
       cell: ({ row }) => row.original.etiqueta_url ? (
         <button className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-secondary"
-          onClick={(e) => { e.stopPropagation(); window.open(row.original.etiqueta_url!, "_blank"); }}>
+          onClick={(e) => { e.stopPropagation(); window.open(pdfUrl(row.original.etiqueta_url!), "_blank"); }}>
           <FileText className="h-3.5 w-3.5 text-red-500" />
           <span className="hidden md:inline">PDF</span>
         </button>
