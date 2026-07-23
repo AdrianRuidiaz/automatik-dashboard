@@ -2,136 +2,109 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Download, ExternalLink, Package, Clock, Info } from "lucide-react";
-import { fetchPedido, fetchArchivos, getEtiquetaUrl } from "@/lib/api";
+import { ArrowLeft, FileText, Package, Info } from "lucide-react";
+import { fetchPedido } from "@/lib/api";
 import { formatCLP, formatFechaLarga, cn } from "@/lib/utils";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
-import type { Pedido, Archivo } from "@/lib/types";
+import type { Pedido } from "@/lib/types";
 import { Navbar } from "@/components/layout/navbar";
+
+const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 export default function PedidoDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [pedido, setPedido] = useState<Pedido | null>(null);
-  const [archivos, setArchivos] = useState<Archivo[]>([]);
-  const [rol, setRol] = useState<"admin" | "vendedor" | "empacador">("admin");
+  const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
     if (params.id) {
-      fetchPedido(params.id as string).then(setPedido).catch(console.error);
-      fetchArchivos(params.id as string).then(setArchivos).catch(console.error);
+      fetchPedido(params.id as string)
+        .then(setPedido)
+        .catch(console.error)
+        .finally(() => setCargando(false));
     }
   }, [params.id]);
 
-  if (!pedido) return (
-    <div>
-      <Navbar rol={rol} onRolChange={setRol} nombreUsuario="Adrian" />
-      <div className="mx-auto max-w-5xl px-6 py-12 text-center text-muted-foreground">Cargando pedido...</div>
-    </div>
-  );
-
-  const etiqueta = archivos.find(a => a.tipo === "etiqueta");
-
   return (
     <div>
-      <Navbar rol={rol} onRolChange={setRol} nombreUsuario="Adrian" />
-      <main className="mx-auto max-w-5xl px-6 py-6">
-        <button onClick={() => router.back()} className="mb-4 flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Volver a pedidos
+      <Navbar />
+      <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+        <button onClick={() => router.back()}
+          className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Volver
         </button>
 
-        <div className="mb-5 flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-medium">Pedido {pedido.id_plataforma}</h1>
-            <div className="mt-2 flex gap-2">
-              <span className={cn("rounded px-2 py-0.5 text-xs", pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
-                {pedido.plataforma === "ML" ? "Mercado Libre" : "Falabella"}
-              </span>
-              <span className={cn("rounded px-2 py-0.5 text-xs", ESTADO_COLORS[pedido.estado])}>
-                {ESTADO_LABELS[pedido.estado]}
-              </span>
-            </div>
+        {cargando ? (
+          <div className="space-y-4">
+            <div className="h-9 w-64 animate-pulse rounded-lg bg-secondary" />
+            <div className="h-40 animate-pulse rounded-xl bg-secondary" />
           </div>
-          {pedido.etiqueta_url && (
-            <a href={pedido.etiqueta_url} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm hover:bg-secondary">
-              <FileText className="h-4 w-4 text-red-500" /> Descargar etiqueta
-            </a>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-border bg-background p-5">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-              <Info className="h-4 w-4 text-primary" /> Informacion
-            </h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              <div><span className="text-xs text-muted-foreground">Cliente</span><p className="font-medium">{pedido.cliente_nombre || "—"}</p></div>
-              <div><span className="text-xs text-muted-foreground">Fecha pedido</span><p>{formatFechaLarga(pedido.fecha_pedido)}</p></div>
-              <div><span className="text-xs text-muted-foreground">Total pagado</span><p className="font-medium">{formatCLP(pedido.total_pagado)}</p></div>
-              <div><span className="text-xs text-muted-foreground">Limite despacho</span><p className="text-amber-600">{formatFechaLarga(pedido.fecha_limite_despacho)}</p></div>
-              <div><span className="text-xs text-muted-foreground">Pack ID</span><p className="font-mono text-xs">{pedido.id_plataforma}</p></div>
-              <div><span className="text-xs text-muted-foreground">Order ID</span><p className="font-mono text-xs">{pedido.order_id}</p></div>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-background p-5">
-            <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-              <FileText className="h-4 w-4 text-red-500" /> Etiqueta de envio
-            </h3>
-            {pedido.etiqueta_url ? (
-              <div className="flex items-center gap-4">
-                <div className="flex h-20 w-16 items-center justify-center rounded-md border border-border bg-card">
-                  <FileText className="h-8 w-8 text-red-400" />
-                </div>
-                <div className="space-y-2">
-                  <a href={pedido.etiqueta_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded border border-input px-3 py-1.5 text-xs hover:bg-secondary">
-                    <Download className="h-3 w-3" /> Descargar
-                  </a>
-                  <a href={pedido.etiqueta_url} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded border border-input px-3 py-1.5 text-xs hover:bg-secondary">
-                    <ExternalLink className="h-3 w-3" /> Abrir en nueva pestana
-                  </a>
+        ) : !pedido ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">No se encontro el pedido</p>
+        ) : (
+          <div className="animate-in-soft space-y-6">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow">Pedido</p>
+                <h1 className="display tabular mt-1 text-2xl sm:text-3xl">{pedido.id_plataforma}</h1>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <span className={cn("pill", pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
+                    {pedido.plataforma === "ML" ? "Mercado Libre" : "Falabella"}
+                  </span>
+                  <span className={cn("pill", ESTADO_COLORS[pedido.estado])}>{ESTADO_LABELS[pedido.estado]}</span>
                 </div>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Sin etiqueta disponible</p>
-            )}
-          </div>
-        </div>
+              {pedido.etiqueta_url ? (
+                <a href={pdfUrl(pedido.etiqueta_url)} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40">
+                  <FileText className="h-4 w-4 text-rose-500" /> Descargar etiqueta
+                </a>
+              ) : (
+                <span className="rounded-lg border border-dashed border-input px-4 py-2.5 text-xs text-muted-foreground">
+                  Sin etiqueta disponible
+                </span>
+              )}
+            </div>
 
-        <div className="mt-4 rounded-xl border border-border bg-background p-5">
-          <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
-            <Package className="h-4 w-4 text-primary" /> Items del pedido
-          </h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="border-b border-border pb-2 font-normal">Producto</th>
-                <th className="border-b border-border pb-2 font-normal">SKU</th>
-                <th className="border-b border-border pb-2 font-normal">Cant.</th>
-                <th className="border-b border-border pb-2 font-normal text-right">Precio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(pedido.items || []).map((item, i) => (
-                <tr key={i} className="border-b border-border last:border-0">
-                  <td className="py-2">{item.title}</td>
-                  <td className="py-2 font-mono text-xs text-muted-foreground">{item.sku || "—"}</td>
-                  <td className="py-2">{item.quantity}</td>
-                  <td className="py-2 text-right">{formatCLP(item.unit_price)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={3} className="pt-3 text-right font-medium">Total</td>
-                <td className="pt-3 text-right font-medium">{formatCLP(pedido.total_pagado)}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+            <section className="card-premium p-5">
+              <p className="eyebrow mb-3 flex items-center gap-1.5"><Info className="h-3 w-3" /> Informacion</p>
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm sm:grid-cols-3">
+                <div><dt className="text-xs text-muted-foreground">Cliente</dt><dd className="mt-0.5 font-medium">{pedido.cliente_nombre || "Sin cliente"}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Fecha pedido</dt><dd className="mt-0.5">{formatFechaLarga(pedido.fecha_pedido)}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Total pagado</dt><dd className="tabular mt-0.5 font-semibold">{formatCLP(pedido.total_pagado)}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Limite despacho</dt><dd className="mt-0.5 text-amber-600">{formatFechaLarga(pedido.fecha_limite_despacho)}</dd></div>
+                <div><dt className="text-xs text-muted-foreground">Order ID</dt><dd className="tabular mt-0.5 font-mono text-xs">{pedido.order_id}</dd></div>
+              </dl>
+            </section>
+
+            <section className="card-premium overflow-hidden">
+              <p className="eyebrow flex items-center gap-1.5 border-b border-border bg-secondary/40 px-5 py-3">
+                <Package className="h-3 w-3" /> Items del pedido
+              </p>
+              {(pedido.items ?? []).length > 0 ? (
+                <table className="w-full text-sm">
+                  <tbody>
+                    {pedido.items.map((item, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-5 py-3">{item.title}</td>
+                        <td className="px-2 py-3 font-mono text-xs text-muted-foreground">{item.sku || "-"}</td>
+                        <td className="px-2 py-3 text-center text-muted-foreground">x{item.quantity}</td>
+                        <td className="tabular px-5 py-3 text-right">{formatCLP(item.unit_price)}</td>
+                      </tr>
+                    ))}
+                    <tr className="bg-secondary/40">
+                      <td colSpan={3} className="px-5 py-3 text-right font-medium">Total</td>
+                      <td className="tabular px-5 py-3 text-right font-semibold">{formatCLP(pedido.total_pagado)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <p className="px-5 py-6 text-sm text-muted-foreground">Sin items registrados</p>
+              )}
+            </section>
+          </div>
+        )}
       </main>
     </div>
   );
