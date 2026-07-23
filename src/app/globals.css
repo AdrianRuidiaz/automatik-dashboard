@@ -4,28 +4,139 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 20 5% 15%;
-    --card: 40 10% 97%;
-    --card-foreground: 20 5% 15%;
-    --primary: 213 68% 54%;
+    /* Fondo calido, no blanco puro */
+    --background: 40 20% 98%;
+    --foreground: 240 12% 12%;
+
+    /* Superficies */
+    --card: 0 0% 100%;
+    --card-foreground: 240 12% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 12% 12%;
+
+    /* Indigo como primario */
+    --primary: 243 75% 62%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 10% 95%;
-    --secondary-foreground: 20 5% 35%;
-    --muted: 40 10% 95%;
-    --muted-foreground: 20 5% 50%;
-    --accent: 40 10% 95%;
-    --accent-foreground: 20 5% 15%;
-    --destructive: 0 72% 51%;
+
+    --secondary: 40 12% 95%;
+    --secondary-foreground: 240 8% 32%;
+    --muted: 40 12% 95%;
+    --muted-foreground: 240 5% 48%;
+    --accent: 40 12% 95%;
+    --accent-foreground: 240 12% 12%;
+
+    --destructive: 350 84% 48%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Bordes ultra sutiles */
     --border: 40 10% 90%;
-    --input: 40 10% 90%;
-    --ring: 213 68% 54%;
-    --radius: 0.5rem;
+    --input: 40 10% 88%;
+    --ring: 243 75% 62%;
+
+    --radius: 0.75rem;
   }
 }
 
 @layer base {
-  * { @apply border-border; }
-  body { @apply bg-background text-foreground; }
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Numeros alineados en tablas y metricas */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Titulos con serif elegante */
+  .display {
+    font-family: var(--font-serif), Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  .display em {
+    font-style: italic;
+    color: hsl(var(--primary));
+  }
+
+  /* Scrollbar discreto */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 999px;
+    border: 3px solid hsl(var(--background));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+
+  /* Foco accesible y consistente */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Tarjeta premium: borde sutil + sombra en capas */
+  .card-premium {
+    @apply rounded-xl border border-border bg-card;
+    box-shadow:
+      0 1px 2px hsl(240 12% 12% / 0.04),
+      0 1px 3px hsl(240 12% 12% / 0.03);
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+
+  .card-premium:hover {
+    box-shadow:
+      0 2px 4px hsl(240 12% 12% / 0.05),
+      0 8px 20px hsl(240 12% 12% / 0.06);
+  }
+
+  /* Pastilla de estado */
+  .pill {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium;
+  }
+
+  /* Etiqueta de seccion */
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-wider text-muted-foreground;
+  }
+
+  /* Fila de tabla con transicion suave */
+  .row-hover {
+    transition: background-color 150ms ease;
+  }
+}
+
+@layer utilities {
+  .animate-in-soft {
+    animation: fadeSlide 260ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes fadeSlide {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
