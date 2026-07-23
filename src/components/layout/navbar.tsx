@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, Settings } from "lucide-react";
+import { Zap, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 
 const NAV_ITEMS: Record<RolUsuario, { href: string; label: string }[]> = {
@@ -15,34 +16,32 @@ const NAV_ITEMS: Record<RolUsuario, { href: string; label: string }[]> = {
   empacador: [],
 };
 
-const ROLE_BADGE: Record<RolUsuario, { label: string; className: string }> = {
-  admin: { label: "Admin", className: "bg-blue-100 text-blue-700" },
-  vendedor: { label: "Vendedor", className: "bg-purple-100 text-purple-700" },
-  empacador: { label: "Empacador", className: "bg-teal-100 text-teal-700" },
-};
+const ROLES: { value: RolUsuario; label: string; dot: string }[] = [
+  { value: "admin", label: "Admin", dot: "bg-indigo-500" },
+  { value: "vendedor", label: "Vendedor", dot: "bg-violet-500" },
+  { value: "empacador", label: "Empacador", dot: "bg-teal-500" },
+];
 
-interface NavbarProps {
-  rol: RolUsuario;
-  onRolChange: (rol: RolUsuario) => void;
-  nombreUsuario: string;
-}
-
-export function Navbar({ rol, onRolChange, nombreUsuario }: NavbarProps) {
+export function Navbar() {
   const pathname = usePathname();
+  const { rol, setRol } = useRole();
   const items = NAV_ITEMS[rol];
-  const badge = ROLE_BADGE[rol];
+  const actual = ROLES.find((r) => r.value === rol)!;
 
   return (
-    <nav className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-1.5 text-base font-semibold sm:text-lg">
-          <Zap className="h-5 w-5 text-primary" />
-          <span className="hidden xs:inline sm:inline">automatik.io</span>
-          <span className="inline xs:hidden sm:hidden">automatik</span>
+    <nav className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
+        <Link href="/" className="flex shrink-0 items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <Zap className="h-4 w-4 text-primary" />
+          </span>
+          <span className="display text-lg sm:text-xl">
+            automatik<em>.io</em>
+          </span>
         </Link>
 
         {items.length > 0 && (
-          <div className="flex gap-0.5 rounded-lg bg-secondary/60 p-0.5">
+          <div className="flex gap-0.5 rounded-xl bg-secondary/70 p-1">
             {items.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
@@ -50,8 +49,10 @@ export function Navbar({ rol, onRolChange, nombreUsuario }: NavbarProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3 sm:text-sm",
-                    active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-all sm:text-sm",
+                    active
+                      ? "bg-card text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {item.label}
@@ -61,27 +62,27 @@ export function Navbar({ rol, onRolChange, nombreUsuario }: NavbarProps) {
           </div>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
-          <select
-            value={rol}
-            onChange={(e) => onRolChange(e.target.value as RolUsuario)}
-            aria-label="Cambiar rol"
-            className="h-8 rounded-md border border-input bg-background px-1.5 text-xs text-muted-foreground sm:px-2"
-          >
-            <option value="admin">Admin</option>
-            <option value="vendedor">Vendedor</option>
-            <option value="empacador">Empacador</option>
-          </select>
+        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="relative">
+            <span className={cn("pointer-events-none absolute left-3 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full", actual.dot)} />
+            <select
+              value={rol}
+              onChange={(e) => setRol(e.target.value as RolUsuario)}
+              aria-label="Cambiar rol"
+              className="h-9 appearance-none rounded-lg border border-input bg-card pl-6 pr-7 text-xs font-medium text-foreground transition-colors hover:border-primary/40 focus:border-primary sm:text-sm"
+            >
+              {ROLES.map((r) => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          </div>
 
-          <span className={cn("hidden rounded-full px-2.5 py-1 text-xs font-medium sm:inline-block", badge.className)}>
-            {badge.label}
+          <span className="hidden text-sm text-muted-foreground md:inline">Adrian</span>
+
+          <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-[11px] font-semibold text-white sm:flex">
+            AR
           </span>
-
-          <span className="hidden text-sm text-muted-foreground md:inline">{nombreUsuario}</span>
-
-          <button aria-label="Ajustes" className="hidden text-muted-foreground hover:text-foreground sm:block">
-            <Settings className="h-4 w-4" />
-          </button>
         </div>
       </div>
     </nav>
