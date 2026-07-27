@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PackingCard } from "@/components/empacador/packing-card";
+import { SearchBar } from "@/components/empacador/search-bar";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { ManualOrderForm } from "@/components/vendedor/manual-order-form";
 import { supabase } from "@/lib/supabase";
@@ -12,7 +13,7 @@ import { fetchPedidos, fetchDashboardResumen, fetchTendenciaDiaria } from "@/lib
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowRight, FileText, RefreshCw } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw, AlertTriangle } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
@@ -24,6 +25,7 @@ export default function HomePage() {
   const [vendedorTab, setVendedorTab] = useState<"docs" | "manual">("docs");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [busqueda, setBusqueda] = useState("");
 
   const loadData = useCallback(async () => {
     setRefreshing(true);
@@ -43,13 +45,59 @@ export default function HomePage() {
     return () => { supabase.removeChannel(ch); };
   }, [loadData]);
 
-  const pendientes = pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado));
+  const pendientes = useMemo(
+    () => pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado)),
+    [pedidos]
+  );
+
+  // Sort by urgency: urgent first, then by fecha_limite_despacho ASC
+  const pendientesOrdenados = useMemo(() => {
+    return [...pendientes].sort((a, b) => {
+      const now = Date.now();
+      const ha = a.fecha_limite_despacho ? (new Date(a.fecha_limite_despacho).getTime() - now) / 36e5 : Infinity;
+      const hb = b.fecha_limite_despacho ? (new Date(b.fecha_limite_despacho).getTime() - now) / 36e5 : Infinity;
+      if (ha !== Infinity && hb !== Infinity) return ha - hb;
+      if (ha !== Infinity) return -1;
+      if (hb !== Infinity) return 1;
+      return 0;
+    });
+  }, [pendientes]);
+
+  // Filter by search
+  const pendientesFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return pendientesOrdenados;
+    const q = busqueda.trim().toLowerCase();
+    return pendientesOrdenados.filter(
+      (p) =>
+        p.id_plataforma.toLowerCase().includes(q) ||
+        p.order_id.toLowerCase().includes(q) ||
+        (p.cliente_nombre ?? "").toLowerCase().includes(q)
+    );
+  }, [pendientesOrdenados, busqueda]);
+
+  // Split into urgent vs normal sections
+  const urgentes = useMemo(
+    () => pendientesFiltrados.filter((p) => {
+      if (!p.fecha_limite_despacho) return false;
+      return (new Date(p.fecha_limite_despacho).getTime() - Date.now()) / 36e5 < 24;
+    }),
+    [pendientesFiltrados]
+  );
+  const normales = useMemo(
+    () => pendientesFiltrados.filter((p) => {
+      if (!p.fecha_limite_despacho) return true;
+      return (new Date(p.fecha_limite_despacho).getTime() - Date.now()) / 36e5 >= 24;
+    }),
+    [pendientesFiltrados]
+  );
+
   const ultimos = pedidos.slice(0, 5);
 
   return (
     <AppShell>
       {(rol: RolUsuario) => (
         <>
+          {/* --- ADMIN --- */}
           {rol === "admin" && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
@@ -158,8 +206,9 @@ export default function HomePage() {
             </div>
           )}
 
+          {/* --- EMPACADOR --- */}
           {rol === "empacador" && (
-            <div className="space-y-4">
+            <div className="space-y-0">
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="eyebrow">Bodega</p>
@@ -167,16 +216,58 @@ export default function HomePage() {
                 </div>
                 <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">{pendientes.length}</span>
               </div>
-              {pendientes.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">No hay pedidos pendientes de empaque</p>
+
+              <SearchBar
+                value={busqueda}
+                onChange={setBusqueda}
+                total={pendientes.length}
+                filtered={pendientesFiltrados.length}
+              />
+
+              {pendientesFiltrados.length === 0 ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  {busqueda ? "No se encontraron pedidos" : "No hay pedidos pendientes de empaque"}
+                </p>
               ) : (
-                <div className="space-y-3">
-                  {pendientes.map((p) => <PackingCard key={p.id} pedido={p} onConfirm={loadData} />)}
+                <div className="space-y-6">
+                  {/* Urgent section */}
+                  {urgentes.length > 0 && (
+                    <section>
+                      <div className="mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-rose-500" />
+                        <h2 className="text-sm font-semibold text-rose-700">
+                          Vencen hoy ({urgentes.length})
+                        </h2>
+                      </div>
+                      <div className="space-y-2 sm:space-y-3">
+                        {urgentes.map((p) => (
+                          <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Normal section */}
+                  {normales.length > 0 && (
+                    <section>
+                      {urgentes.length > 0 && (
+                        <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+                          Restantes ({normales.length})
+                        </h2>
+                      )}
+                      <div className="space-y-2 sm:space-y-3">
+                        {normales.map((p) => (
+                          <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
+                        ))}
+                      </div>
+                    </section>
+                  )}
                 </div>
               )}
             </div>
           )}
 
+          {/* --- VENDEDOR --- */}
           {rol === "vendedor" && (
             <div className="space-y-5">
               <div>
