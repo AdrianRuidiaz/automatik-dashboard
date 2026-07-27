@@ -14,7 +14,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="min-h-screen">
       <Navbar />
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-8">
         {listo ? (
           <div key={rol} className="animate-in-soft">
             {children(rol)}
