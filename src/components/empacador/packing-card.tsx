@@ -22,6 +22,7 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
     ? (new Date(pedido.fecha_limite_despacho).getTime() - Date.now()) / 36e5
     : null;
   const venceHoy = horasRestantes !== null && horasRestantes < 24;
+  const urgente = horasRestantes !== null && horasRestantes < 6;
 
   const addFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -63,38 +64,67 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
     }
   };
 
+  if (confirmed) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 sm:p-4">
+        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
+        <div className="min-w-0">
+          <span className="text-sm font-semibold">{pedido.id_plataforma}</span>
+          <span className="ml-2 text-xs text-emerald-600">Empacado</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn("rounded-xl border border-border bg-card p-3 transition-opacity sm:p-4", confirmed && "opacity-60")}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <div
+      className={cn(
+        "rounded-xl border bg-card transition-all sm:p-4",
+        urgente
+          ? "border-rose-300 bg-rose-50/30 p-3"
+          : venceHoy
+            ? "border-amber-300 bg-amber-50/20 p-3"
+            : "border-border p-3"
+      )}
+    >
+      {/* Header */}
+      <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold sm:text-base">{pedido.id_plataforma}</span>
-          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium",
-            pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
+          <span className="tabular text-base font-semibold">{pedido.id_plataforma}</span>
+          <span
+            className={cn(
+              "rounded-full px-2 py-0.5 text-[10px] font-medium",
+              pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark"
+            )}
+          >
             {pedido.plataforma === "ML" ? "ML" : "FA"}
           </span>
         </div>
-        {confirmed ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
-            <CheckCircle className="h-3.5 w-3.5" /> Empacado
+        {urgente ? (
+          <span className="flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
+            <AlertTriangle className="h-3.5 w-3.5" /> Urgente
           </span>
         ) : venceHoy ? (
-          <span className="flex items-center gap-1 text-xs font-medium text-rose-600">
+          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
             <AlertTriangle className="h-3.5 w-3.5" /> Vence hoy
           </span>
-        ) : (
+        ) : horasRestantes !== null ? (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" /> {formatFechaCorta(pedido.fecha_limite_despacho)}
+            <Clock className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">{formatFechaCorta(pedido.fecha_limite_despacho)}</span>
+            <span className="sm:hidden">{Math.floor(horasRestantes)}h</span>
           </span>
-        )}
+        ) : null}
       </div>
 
+      {/* Items */}
       <div className="mb-3 space-y-1">
         {(pedido.items ?? []).map((item, i) => (
           <div key={i} className="flex items-start gap-2 text-sm">
             <span className="mt-0.5 shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
               x{item.quantity}
             </span>
-            <span className="text-muted-foreground">{item.title}</span>
+            <span className="line-clamp-2 text-muted-foreground">{item.title}</span>
           </div>
         ))}
         {(pedido.items ?? []).length === 0 && (
@@ -102,47 +132,54 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
         )}
       </div>
 
+      {/* Evidence */}
       <div className="border-t border-border pt-3">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque (1 a 3 fotos)
+          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque ({fotos.length}/3)
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
           {fotos.map((foto, i) => (
-            <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-border">
+            <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-border sm:h-20 sm:w-20">
               <img src={foto.preview} alt={`Evidencia ${i + 1}`} className="h-full w-full object-cover" />
-              {!confirmed && (
-                <button
-                  onClick={() => removeFoto(i)}
-                  aria-label="Quitar foto"
-                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
+              <button
+                onClick={() => removeFoto(i)}
+                aria-label="Quitar foto"
+                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80 sm:h-6 sm:w-6"
+              >
+                <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+              </button>
             </div>
           ))}
 
-          {fotos.length < 3 && !confirmed && (
+          {fotos.length < 3 && (
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-background text-muted-foreground active:bg-secondary"
+              className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 text-primary active:bg-primary/10 sm:h-20 sm:w-20 sm:border-input sm:bg-background sm:text-muted-foreground"
             >
-              <Plus className="h-5 w-5" />
-              <span className="text-[10px]">Foto {fotos.length + 1}</span>
+              <Plus className="h-6 w-6 sm:h-5 sm:w-5" />
+              <span className="text-[11px] font-medium">Foto {fotos.length + 1}</span>
             </button>
           )}
         </div>
 
         {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
 
-        {fotos.length > 0 && !confirmed && (
+        {fotos.length > 0 && (
           <button
             onClick={handleConfirm}
             disabled={uploading}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-medium text-white active:bg-emerald-700 disabled:opacity-60 sm:w-auto"
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] active:bg-emerald-700 disabled:opacity-60 sm:w-auto sm:rounded-lg sm:py-3 sm:shadow-none"
           >
-            {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Check className="h-4 w-4" /> Confirmar empaque</>}
+            {uploading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Subiendo...
+              </>
+            ) : (
+              <>
+                <Check className="h-4 w-4" /> Confirmar empaque
+              </>
+            )}
           </button>
         )}
 
