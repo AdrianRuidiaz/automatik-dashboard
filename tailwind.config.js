@@ -19,6 +19,10 @@ module.exports = {
         ml: { light: "#E6F1FB", DEFAULT: "#378ADD", dark: "#0C447C" },
         fa: { light: "#FAEEDA", DEFAULT: "#EF9F27", dark: "#854F0B" },
       },
+      fontFamily: {
+        sans: ["var(--font-sans)"],
+        serif: ["var(--font-serif)"],
+      },
       borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
     },
   },

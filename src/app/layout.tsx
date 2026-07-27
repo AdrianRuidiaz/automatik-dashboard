@@ -1,28 +1,13 @@
-import type { Metadata } from "next";
-import { Inter, Instrument_Serif } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import { RoleProvider } from "@/lib/role-context";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
-});
-
-const serif = Instrument_Serif({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "automatik.io — Gestion de pedidos",
-  description: "Panel de gestion de pedidos para marketplaces",
+  title: "automatik.io \u2014 Gesti\u00f3n de pedidos",
+  description: "Panel de gesti\u00f3n de pedidos para marketplaces",
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -31,7 +16,12 @@ export const viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={`${inter.variable} ${serif.variable}`}>
+    <html lang="es">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+      </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <RoleProvider>{children}</RoleProvider>
       </body>
