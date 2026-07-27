@@ -28,14 +28,22 @@ export function Navbar() {
   const items = NAV_ITEMS[rol];
   const actual = ROLES.find((r) => r.value === rol)!;
 
+  const isCompact = rol === "empacador" || rol === "vendedor";
+
   return (
     <nav className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
+      <div className={cn(
+        "mx-auto flex w-full max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-6",
+        isCompact ? "h-12 sm:h-16" : "h-16"
+      )}>
         <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            <Zap className="h-4 w-4 text-primary" />
+          <span className={cn(
+            "flex items-center justify-center rounded-lg bg-primary/10",
+            isCompact ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8"
+          )}>
+            <Zap className={cn("text-primary", isCompact ? "h-3.5 w-3.5 sm:h-4 sm:w-4" : "h-4 w-4")} />
           </span>
-          <span className="display text-lg sm:text-xl">
+          <span className={cn("display", isCompact ? "text-base sm:text-xl" : "text-lg sm:text-xl")}>
             automatik<em>.io</em>
           </span>
         </Link>
@@ -69,7 +77,10 @@ export function Navbar() {
               value={rol}
               onChange={(e) => setRol(e.target.value as RolUsuario)}
               aria-label="Cambiar rol"
-              className="h-9 appearance-none rounded-lg border border-input bg-card pl-6 pr-7 text-xs font-medium text-foreground transition-colors hover:border-primary/40 focus:border-primary sm:text-sm"
+              className={cn(
+                "appearance-none rounded-lg border border-input bg-card pl-6 pr-7 font-medium text-foreground transition-colors hover:border-primary/40 focus:border-primary",
+                isCompact ? "h-8 text-xs sm:h-9 sm:text-sm" : "h-9 text-xs sm:text-sm"
+              )}
             >
               {ROLES.map((r) => (
                 <option key={r.value} value={r.value}>{r.label}</option>
