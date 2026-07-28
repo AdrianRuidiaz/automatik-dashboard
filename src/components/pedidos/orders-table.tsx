@@ -5,11 +5,11 @@ import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera } from "lucide-react";
+import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
-import type { Pedido, Plataforma, Archivo } from "@/lib/types";
+import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
@@ -35,13 +35,12 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   return (
     <div className="bg-secondary/30 px-3 py-4 md:px-6">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {/* Info + Items */}
         <div>
           <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <Info className="h-3 w-3" /> Informacion
           </h4>
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium truncate">{pedido.cliente_nombre || "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">Cliente</p><p className="font-medium truncate">{pedido.cliente_nombre || "\u2014"}</p></div>
             <div><p className="text-xs text-muted-foreground">Fecha</p><p>{formatFechaLarga(pedido.fecha_pedido)}</p></div>
             <div><p className="text-xs text-muted-foreground">Total</p><p className="font-medium">{formatCLP(pedido.total_pagado)}</p></div>
             <div><p className="text-xs text-muted-foreground">Limite despacho</p><p className="text-amber-600 text-xs">{formatFechaLarga(pedido.fecha_limite_despacho)}</p></div>
@@ -67,7 +66,6 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           </div>
         </div>
 
-        {/* Etiqueta */}
         <div>
           <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <FileText className="h-3 w-3" /> Etiqueta de envio
@@ -78,8 +76,6 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
                 className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors">
                 <FileText className="h-4 w-4 text-red-500 shrink-0" /> Descargar PDF
               </a>
-              <a href={pdfUrl(pedido.etiqueta_url!)} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-muted-foreground hover:text-foreground">Abrir en nueva pestana</a>
             </div>
           ) : <p className="text-xs text-muted-foreground">Sin etiqueta disponible</p>}
 
@@ -99,7 +95,6 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           ) : <p className="text-xs text-muted-foreground">Sin evidencias</p>}
         </div>
 
-        {/* Documentos tributarios */}
         <div>
           <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <FileText className="h-3 w-3" /> Documentos tributarios
@@ -124,11 +119,25 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   );
 }
 
+const ESTADOS_FILTER: { key: "all" | EstadoPedido; label: string }[] = [
+  { key: "all", label: "Todos" },
+  { key: "pending", label: "Pendiente" },
+  { key: "paid", label: "Pagado" },
+  { key: "ready_to_ship", label: "Listo" },
+  { key: "shipped", label: "Enviado" },
+  { key: "delivered", label: "Entregado" },
+  { key: "cancelled", label: "Cancelado" },
+  { key: "returned", label: "Devuelto" },
+];
+
 export function OrdersTable({ pedidos }: OrdersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState<"all" | Plataforma>("all");
-  const [onlyPending, setOnlyPending] = useState(false);
+  const [estadoFilter, setEstadoFilter] = useState<"all" | EstadoPedido>("all");
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
   const toggleRow = (id: string) => {
@@ -139,12 +148,36 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
     });
   };
 
+  const activeFilterCount = [
+    platformFilter !== "all",
+    estadoFilter !== "all",
+    fechaDesde !== "",
+    fechaHasta !== "",
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setPlatformFilter("all");
+    setEstadoFilter("all");
+    setFechaDesde("");
+    setFechaHasta("");
+  };
+
   const filtered = useMemo(() => {
     let data = pedidos;
     if (platformFilter !== "all") data = data.filter((p) => p.plataforma === platformFilter);
-    if (onlyPending) data = data.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado));
+    if (estadoFilter !== "all") data = data.filter((p) => p.estado === estadoFilter);
+    if (fechaDesde) {
+      const desde = new Date(fechaDesde);
+      desde.setHours(0, 0, 0, 0);
+      data = data.filter((p) => p.fecha_pedido && new Date(p.fecha_pedido) >= desde);
+    }
+    if (fechaHasta) {
+      const hasta = new Date(fechaHasta);
+      hasta.setHours(23, 59, 59, 999);
+      data = data.filter((p) => p.fecha_pedido && new Date(p.fecha_pedido) <= hasta);
+    }
     return data;
-  }, [pedidos, platformFilter, onlyPending]);
+  }, [pedidos, platformFilter, estadoFilter, fechaDesde, fechaHasta]);
 
   const columns: ColumnDef<Pedido>[] = useMemo(() => [
     {
@@ -157,7 +190,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
     },
     {
       accessorKey: "id_plataforma",
-      header: ({ column }) => (<button className="flex items-center gap-1 font-normal" onClick={() => column.toggleSorting()}>N° pedido <ArrowUpDown className="h-3 w-3" /></button>),
+      header: ({ column }) => (<button className="flex items-center gap-1 font-normal" onClick={() => column.toggleSorting()}>N\u00b0 pedido <ArrowUpDown className="h-3 w-3" /></button>),
       cell: ({ row }) => <span className="font-medium text-xs md:text-sm">{row.original.id_plataforma}</span>,
     },
     {
@@ -171,13 +204,13 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
     },
     {
       accessorKey: "cliente_nombre", header: "Cliente",
-      cell: ({ row }) => <span className="block max-w-[120px] md:max-w-[180px] truncate text-sm">{row.original.cliente_nombre ?? "—"}</span>,
+      cell: ({ row }) => <span className="block max-w-[120px] md:max-w-[180px] truncate text-sm">{row.original.cliente_nombre ?? "\u2014"}</span>,
     },
     {
       id: "items_preview", header: "Items",
       cell: ({ row }) => {
         const t = (row.original.items ?? []).map(i => i.title).join(", ");
-        return <span className="hidden lg:block max-w-[160px] truncate text-xs text-muted-foreground">{t || "—"}</span>;
+        return <span className="hidden lg:block max-w-[160px] truncate text-xs text-muted-foreground">{t || "\u2014"}</span>;
       },
     },
     {
@@ -216,31 +249,91 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
         <span className="text-xs text-muted-foreground">{filtered.length} pedidos</span>
       </div>
 
-      {/* Filtros - responsive */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      {/* Barra principal: busqueda + toggle filtros */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-2 rounded-md border border-input px-3 py-1.5 flex-1 min-w-0 max-w-xs">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <input placeholder="Buscar pedido, cliente..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)}
             className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
         </div>
-        <div className="flex gap-1 flex-wrap">
-          {(["all", "ML", "Falabella"] as const).map((opt) => (
-            <button key={opt} onClick={() => setPlatformFilter(opt)}
-              className={cn("rounded-md border px-2.5 py-1.5 text-xs transition-colors", platformFilter === opt ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
-              {opt === "all" ? "Todos" : opt}
-            </button>
-          ))}
-          <button onClick={() => setOnlyPending((v) => !v)}
-            className={cn("rounded-md border px-2.5 py-1.5 text-xs transition-colors", onlyPending ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
-            Pendientes
+        <button onClick={() => setShowFilters((v) => !v)}
+          className={cn("inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+            showFilters || activeFilterCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
+          <Filter className="h-3.5 w-3.5" />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {activeFilterCount > 0 && (
+          <button onClick={clearFilters} className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <X className="h-3 w-3" /> Limpiar
           </button>
-        </div>
+        )}
         <button className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0">
           <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
         </button>
       </div>
 
-      {/* Tabla responsive - scroll horizontal en mobile */}
+      {/* Panel de filtros expandible */}
+      {showFilters && (
+        <div className="mb-4 rounded-lg border border-border bg-card p-3 space-y-3 animate-in slide-in-from-top-1 duration-200">
+          {/* Plataforma */}
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Plataforma</p>
+            <div className="flex gap-1 flex-wrap">
+              {(["all", "ML", "Falabella"] as const).map((opt) => (
+                <button key={opt} onClick={() => setPlatformFilter(opt)}
+                  className={cn("rounded-md border px-2.5 py-1 text-xs transition-colors", platformFilter === opt ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
+                  {opt === "all" ? "Todas" : opt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Estado */}
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Estado</p>
+            <div className="flex gap-1 flex-wrap">
+              {ESTADOS_FILTER.map((ef) => (
+                <button key={ef.key} onClick={() => setEstadoFilter(ef.key)}
+                  className={cn("rounded-md border px-2.5 py-1 text-xs transition-colors", estadoFilter === ef.key ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
+                  {ef.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rango de fechas */}
+          <div>
+            <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <CalendarDays className="h-3 w-3" /> Rango de fechas
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground">Desde</label>
+                <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
+                  className="rounded-md border border-input bg-transparent px-2 py-1 text-xs outline-none focus:border-primary" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs text-muted-foreground">Hasta</label>
+                <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
+                  className="rounded-md border border-input bg-transparent px-2 py-1 text-xs outline-none focus:border-primary" />
+              </div>
+              {(fechaDesde || fechaHasta) && (
+                <button onClick={() => { setFechaDesde(""); setFechaHasta(""); }}
+                  className="text-xs text-muted-foreground hover:text-foreground">
+                  Limpiar fechas
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla responsive */}
       <div className="overflow-x-auto -mx-4 md:mx-0">
         <div className="min-w-[640px] px-4 md:px-0">
           <table className="w-full border-collapse text-sm">
@@ -280,9 +373,16 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
         </div>
       </div>
 
+      {table.getRowModel().rows.length === 0 && (
+        <p className="py-12 text-center text-sm text-muted-foreground">No hay pedidos con esos filtros</p>
+      )}
+
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="shrink-0">
-          {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}&ndash;{Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filtered.length)} de {filtered.length}
+          {filtered.length > 0
+            ? `${table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}\u2013${Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filtered.length)} de ${filtered.length}`
+            : "0 resultados"
+          }
         </span>
         <div className="flex gap-1">
           <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Anterior</button>
