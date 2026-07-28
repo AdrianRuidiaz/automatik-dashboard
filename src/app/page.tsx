@@ -53,15 +53,15 @@ export default function HomePage() {
   const historial = useMemo(
     () => pedidos
       .filter((p) => ["shipped", "delivered"].includes(p.estado))
-      .sort((a, b) => new Date(b.fecha_pedido).getTime() - new Date(a.fecha_pedido).getTime()),
+      .sort((a, b) => new Date(b.fecha_pedido ?? "").getTime() - new Date(a.fecha_pedido ?? "").getTime()),
     [pedidos]
   );
 
   const pendientesOrdenados = useMemo(() => {
     return [...pendientes].sort((a, b) => {
       const now = Date.now();
-      const ha = a.fecha_limite_despacho ? (new Date(a.fecha_limite_despacho).getTime() - now) / 36e5 : Infinity;
-      const hb = b.fecha_limite_despacho ? (new Date(b.fecha_limite_despacho).getTime() - now) / 36e5 : Infinity;
+      const ha = a.fecha_limite_despacho ? (new Date(a.fecha_limite_despacho ?? "").getTime() - now) / 36e5 : Infinity;
+      const hb = b.fecha_limite_despacho ? (new Date(b.fecha_limite_despacho ?? "").getTime() - now) / 36e5 : Infinity;
       if (ha !== Infinity && hb !== Infinity) return ha - hb;
       if (ha !== Infinity) return -1;
       if (hb !== Infinity) return 1;
@@ -83,14 +83,14 @@ export default function HomePage() {
   const urgentes = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return false;
-      return (new Date(p.fecha_limite_despacho).getTime() - Date.now()) / 36e5 < 24;
+      return (new Date(p.fecha_limite_despacho ?? "").getTime() - Date.now()) / 36e5 < 24;
     }),
     [pendientesFiltrados]
   );
   const normales = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return true;
-      return (new Date(p.fecha_limite_despacho).getTime() - Date.now()) / 36e5 >= 24;
+      return (new Date(p.fecha_limite_despacho ?? "").getTime() - Date.now()) / 36e5 >= 24;
     }),
     [pendientesFiltrados]
   );
@@ -182,7 +182,7 @@ export default function HomePage() {
                               {p.plataforma === "ML" ? "ML" : "FA"}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground">{formatFechaCorta(p.fecha_pedido)}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{formatFechaCorta(p.fecha_pedido ?? "")}</td>
                           <td className="max-w-[180px] truncate px-4 py-3">{p.cliente_nombre || "Sin cliente"}</td>
                           <td className="tabular whitespace-nowrap px-4 py-3 font-medium">{formatCLP(p.total_pagado)}</td>
                           <td className="px-4 py-3">
@@ -331,7 +331,7 @@ export default function HomePage() {
                               {ESTADO_LABELS[p.estado]}
                             </span>
                             <p className="mt-1 text-[11px] text-muted-foreground">
-                              {formatFechaCorta(p.fecha_pedido)}
+                              {formatFechaCorta(p.fecha_pedido ?? "")}
                             </p>
                           </div>
                         </div>
