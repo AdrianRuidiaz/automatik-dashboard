@@ -13,7 +13,7 @@ import { fetchPedidos, fetchDashboardResumen, fetchTendenciaDiaria } from "@/lib
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowRight, FileText, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw, AlertTriangle, CheckCircle, Clock, Package } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
   const [tendencia, setTendencia] = useState<TendenciaDiaria[]>([]);
   const [vendedorTab, setVendedorTab] = useState<"docs" | "manual">("docs");
+  const [empacadorTab, setEmpacadorTab] = useState<"pendientes" | "historial">("pendientes");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -45,12 +46,21 @@ export default function HomePage() {
     return () => { supabase.removeChannel(ch); };
   }, [loadData]);
 
+  // Empacador: pedidos por empacar
   const pendientes = useMemo(
     () => pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado)),
     [pedidos]
   );
 
-  // Sort by urgency: urgent first, then by fecha_limite_despacho ASC
+  // Empacador: historial (entregados, enviados)
+  const historial = useMemo(
+    () => pedidos
+      .filter((p) => ["shipped", "delivered"].includes(p.estado))
+      .sort((a, b) => new Date(b.fecha_pedido).getTime() - new Date(a.fecha_pedido).getTime()),
+    [pedidos]
+  );
+
+  // Sort pendientes by urgency
   const pendientesOrdenados = useMemo(() => {
     return [...pendientes].sort((a, b) => {
       const now = Date.now();
@@ -75,7 +85,7 @@ export default function HomePage() {
     );
   }, [pendientesOrdenados, busqueda]);
 
-  // Split into urgent vs normal sections
+  // Split urgent vs normal
   const urgentes = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return false;
@@ -212,55 +222,132 @@ export default function HomePage() {
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="eyebrow">Bodega</p>
-                  <h1 className="display mt-1 text-2xl sm:text-3xl">Pedidos por <em>empacar</em></h1>
+                  <h1 className="display mt-1 text-2xl sm:text-3xl">
+                    {empacadorTab === "pendientes" ? <>Pedidos por <em>empacar</em></> : <em>Historial</em>}
+                  </h1>
                 </div>
-                <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">{pendientes.length}</span>
+                <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                  {empacadorTab === "pendientes" ? pendientes.length : historial.length}
+                </span>
               </div>
 
-              <SearchBar
-                value={busqueda}
-                onChange={setBusqueda}
-                total={pendientes.length}
-                filtered={pendientesFiltrados.length}
-              />
-
-              {pendientesFiltrados.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  {busqueda ? "No se encontraron pedidos" : "No hay pedidos pendientes de empaque"}
-                </p>
-              ) : (
-                <div className="space-y-6">
-                  {/* Urgent section */}
-                  {urgentes.length > 0 && (
-                    <section>
-                      <div className="mb-2 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-rose-500" />
-                        <h2 className="text-sm font-semibold text-rose-700">
-                          Vencen hoy ({urgentes.length})
-                        </h2>
-                      </div>
-                      <div className="space-y-2 sm:space-y-3">
-                        {urgentes.map((p) => (
-                          <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
-                        ))}
-                      </div>
-                    </section>
+              {/* Tabs */}
+              <div className="mt-3 flex gap-0.5 rounded-xl bg-secondary/70 p-1">
+                <button
+                  onClick={() => { setEmpacadorTab("pendientes"); setBusqueda(""); }}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all sm:flex-none sm:px-4 sm:text-sm",
+                    empacadorTab === "pendientes" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
                   )}
+                >
+                  <Package className="h-3.5 w-3.5" /> Por empacar
+                </button>
+                <button
+                  onClick={() => { setEmpacadorTab("historial"); setBusqueda(""); }}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all sm:flex-none sm:px-4 sm:text-sm",
+                    empacadorTab === "historial" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Clock className="h-3.5 w-3.5" /> Historial
+                </button>
+              </div>
 
-                  {/* Normal section */}
-                  {normales.length > 0 && (
-                    <section>
+              {/* Tab: Por empacar */}
+              {empacadorTab === "pendientes" && (
+                <>
+                  <SearchBar
+                    value={busqueda}
+                    onChange={setBusqueda}
+                    total={pendientes.length}
+                    filtered={pendientesFiltrados.length}
+                  />
+
+                  {pendientesFiltrados.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      {busqueda ? "No se encontraron pedidos" : "No hay pedidos pendientes de empaque"}
+                    </p>
+                  ) : (
+                    <div className="space-y-6">
                       {urgentes.length > 0 && (
-                        <h2 className="mb-2 text-sm font-medium text-muted-foreground">
-                          Restantes ({normales.length})
-                        </h2>
+                        <section>
+                          <div className="mb-2 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4 text-rose-500" />
+                            <h2 className="text-sm font-semibold text-rose-700">
+                              Vencen hoy ({urgentes.length})
+                            </h2>
+                          </div>
+                          <div className="space-y-2 sm:space-y-3">
+                            {urgentes.map((p) => (
+                              <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
+                            ))}
+                          </div>
+                        </section>
                       )}
-                      <div className="space-y-2 sm:space-y-3">
-                        {normales.map((p) => (
-                          <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
-                        ))}
-                      </div>
-                    </section>
+
+                      {normales.length > 0 && (
+                        <section>
+                          {urgentes.length > 0 && (
+                            <h2 className="mb-2 text-sm font-medium text-muted-foreground">
+                              Restantes ({normales.length})
+                            </h2>
+                          )}
+                          <div className="space-y-2 sm:space-y-3">
+                            {normales.map((p) => (
+                              <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
+                            ))}
+                          </div>
+                        </section>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Tab: Historial */}
+              {empacadorTab === "historial" && (
+                <div className="mt-3">
+                  {historial.length === 0 ? (
+                    <p className="py-12 text-center text-sm text-muted-foreground">
+                      Aun no hay pedidos entregados
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {historial.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 sm:p-4"
+                        >
+                          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-500" />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="tabular text-sm font-semibold">{p.id_plataforma}</span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
+                                  p.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark"
+                                )}
+                              >
+                                {p.plataforma === "ML" ? "ML" : "FA"}
+                              </span>
+                            </div>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {(p.items ?? []).length > 0
+                                ? (p.items ?? []).map((it) => it.title).join(", ")
+                                : p.cliente_nombre || "Sin detalle"}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <span className={cn("pill text-[10px]", ESTADO_COLORS[p.estado])}>
+                              {ESTADO_LABELS[p.estado]}
+                            </span>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {formatFechaCorta(p.fecha_pedido)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
