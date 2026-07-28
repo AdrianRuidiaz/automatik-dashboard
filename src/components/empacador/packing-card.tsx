@@ -12,7 +12,7 @@ interface PackingCardProps {
 }
 
 function DeadlineBadge({ fecha }: { fecha: string | null }) {
-  if (!fecha) return <span className="text-xs text-muted-foreground">Sin fecha l\u00edmite</span>;
+  if (!fecha) return <span className="text-xs text-muted-foreground">Sin fecha límite</span>;
 
   const ahora = new Date();
   const limite = new Date(fecha);
@@ -36,7 +36,7 @@ function DeadlineBadge({ fecha }: { fecha: string | null }) {
   if (diffHoras < 48) {
     return (
       <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
-        <Clock className="h-3 w-3" /> Vence ma\u00f1ana
+        <Clock className="h-3 w-3" /> Vence mañana
       </span>
     );
   }
