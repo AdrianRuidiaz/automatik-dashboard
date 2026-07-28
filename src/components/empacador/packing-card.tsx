@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { Camera, Image, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
 import { cn, formatFechaCorta } from "@/lib/utils";
 import { uploadArchivo, registrarArchivo } from "@/lib/api";
 import type { Pedido } from "@/lib/types";
@@ -16,7 +16,8 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
   const [uploading, setUploading] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const horasRestantes = pedido.fecha_limite_despacho
     ? (new Date(pedido.fecha_limite_despacho).getTime() - Date.now()) / 36e5
@@ -28,7 +29,8 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
     const files = Array.from(e.target.files ?? []);
     const nuevas = files.slice(0, 3 - fotos.length).map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
     setFotos((prev) => [...prev, ...nuevas]);
-    if (fileRef.current) fileRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+    if (galleryRef.current) galleryRef.current.value = "";
   };
 
   const removeFoto = (idx: number) => {
@@ -75,6 +77,8 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
       </div>
     );
   }
+
+  const canAdd = fotos.length < 3;
 
   return (
     <div
@@ -138,30 +142,43 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           <Camera className="h-3.5 w-3.5" /> Evidencia de empaque ({fotos.length}/3)
         </p>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {fotos.map((foto, i) => (
-            <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-border sm:h-20 sm:w-20">
-              <img src={foto.preview} alt={`Evidencia ${i + 1}`} className="h-full w-full object-cover" />
-              <button
-                onClick={() => removeFoto(i)}
-                aria-label="Quitar foto"
-                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80 sm:h-6 sm:w-6"
-              >
-                <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-              </button>
-            </div>
-          ))}
+        {/* Photo previews */}
+        {fotos.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {fotos.map((foto, i) => (
+              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-border sm:h-20 sm:w-20">
+                <img src={foto.preview} alt={`Evidencia ${i + 1}`} className="h-full w-full object-cover" />
+                <button
+                  onClick={() => removeFoto(i)}
+                  aria-label="Quitar foto"
+                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80 sm:h-6 sm:w-6"
+                >
+                  <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-          {fotos.length < 3 && (
+        {/* Camera / Gallery buttons */}
+        {canAdd && (
+          <div className="flex gap-2">
             <button
-              onClick={() => fileRef.current?.click()}
-              className="flex h-24 w-24 flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-primary/30 bg-primary/5 text-primary active:bg-primary/10 sm:h-20 sm:w-20 sm:border-input sm:bg-background sm:text-muted-foreground"
+              onClick={() => cameraRef.current?.click()}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 py-3 text-sm font-medium text-primary active:bg-primary/10 sm:flex-none sm:rounded-lg sm:border-input sm:bg-background sm:px-4 sm:py-2.5 sm:text-muted-foreground"
             >
-              <Plus className="h-6 w-6 sm:h-5 sm:w-5" />
-              <span className="text-[11px] font-medium">Foto {fotos.length + 1}</span>
+              <Camera className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span>Camara</span>
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => galleryRef.current?.click()}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300/50 bg-violet-50/50 py-3 text-sm font-medium text-violet-600 active:bg-violet-100 sm:flex-none sm:rounded-lg sm:border-input sm:bg-background sm:px-4 sm:py-2.5 sm:text-muted-foreground"
+            >
+              <Image className="h-5 w-5 sm:h-4 sm:w-4" />
+              <span>Galeria</span>
+            </button>
+          </div>
+        )}
 
         {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
 
@@ -183,8 +200,18 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           </button>
         )}
 
+        {/* Camera input - opens camera directly on mobile */}
         <input
-          ref={fileRef}
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={addFoto}
+        />
+        {/* Gallery input - opens file picker / photo gallery */}
+        <input
+          ref={galleryRef}
           type="file"
           accept="image/*"
           multiple
