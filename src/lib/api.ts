@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Pedido, DashboardResumen, TendenciaDiaria, Archivo } from "./types";
+import type { Pedido, DashboardResumen, TendenciaDiaria, Archivo, EstadoPedido } from "./types";
 
 const CLIENTE_ID = process.env.NEXT_PUBLIC_CLIENTE_ID!;
 
@@ -92,6 +92,17 @@ export async function registrarArchivo(archivo: {
   nombre_archivo: string;
 }): Promise<void> {
   const { error } = await supabase.from("archivos").insert(archivo);
+  if (error) throw error;
+}
+
+export async function updateEstadoPedido(
+  pedidoId: string,
+  estado: EstadoPedido
+): Promise<void> {
+  const { error } = await supabase
+    .from("pedidos")
+    .update({ estado, updated_at: new Date().toISOString() })
+    .eq("id", pedidoId);
   if (error) throw error;
 }
 
