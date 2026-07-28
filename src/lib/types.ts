@@ -57,6 +57,8 @@ export interface DashboardResumen {
   por_despachar_fa: number;
   cancelados: number;
   monto_cancelados: number;
+  ticket_promedio: number;
+  tasa_cancelacion: number;
 }
 
 export interface TendenciaDiaria {
