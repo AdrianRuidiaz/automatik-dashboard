@@ -3,105 +3,130 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Zap, ChevronDown } from "lucide-react";
+import { useRole, type Rol } from "@/lib/role-context";
 import { cn } from "@/lib/utils";
-import { useRole } from "@/lib/role-context";
-import type { RolUsuario } from "@/lib/types";
+import { useState, useRef, useEffect } from "react";
 
-const NAV_ITEMS: Record<RolUsuario, { href: string; label: string }[]> = {
+const NAV_ITEMS: Record<Rol, { label: string; href: string }[]> = {
   admin: [
-    { href: "/", label: "Dashboard" },
-    { href: "/pedidos", label: "Pedidos" },
+    { label: "Dashboard", href: "/" },
+    { label: "Pedidos", href: "/pedidos" },
   ],
   vendedor: [
-    { href: "/", label: "Documentos" },
-    { href: "/pedidos", label: "Pedidos" },
+    { label: "Ventas", href: "/" },
+    { label: "Pedidos", href: "/pedidos" },
   ],
   empacador: [
-    { href: "/", label: "Empaque" },
-    { href: "/pedidos", label: "Pedidos" },
+    { label: "Empaque", href: "/" },
+    { label: "Pedidos", href: "/pedidos" },
   ],
 };
 
-const ROLES: { value: RolUsuario; label: string; dot: string }[] = [
-  { value: "admin", label: "Admin", dot: "bg-indigo-500" },
-  { value: "vendedor", label: "Vendedor", dot: "bg-violet-500" },
-  { value: "empacador", label: "Empacador", dot: "bg-teal-500" },
-];
+const ROL_LABELS: Record<Rol, string> = { admin: "Admin", vendedor: "Vendedor", empacador: "Empacador" };
+const ROL_COLORS: Record<Rol, string> = {
+  admin: "bg-amber-400",
+  vendedor: "bg-emerald-400",
+  empacador: "bg-sky-400",
+};
 
 export function Navbar() {
   const pathname = usePathname();
-  const { rol, setRol } = useRole();
-  const items = NAV_ITEMS[rol];
-  const actual = ROLES.find((r) => r.value === rol)!;
+  const { rol, setRol, nombre } = useRole();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  const isCompact = rol === "empacador" || rol === "vendedor";
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const initials = nombre
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
-    <nav className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl">
-      <div className={cn(
-        "mx-auto flex w-full max-w-6xl items-center gap-3 px-4 sm:gap-5 sm:px-6",
-        isCompact ? "h-12 sm:h-16" : "h-16"
-      )}>
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className={cn(
-            "flex items-center justify-center rounded-lg bg-primary/10",
-            isCompact ? "h-7 w-7 sm:h-8 sm:w-8" : "h-8 w-8"
-          )}>
-            <Zap className={cn("text-primary", isCompact ? "h-3.5 w-3.5 sm:h-4 sm:w-4" : "h-4 w-4")} />
-          </span>
-          <span className={cn("display", isCompact ? "text-base sm:text-xl" : "text-lg sm:text-xl")}>
-            automatik<em>.io</em>
+    <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[hsl(230,15%,7%)]/80 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/20">
+            <Zap className="h-4 w-4 text-[hsl(230,15%,7%)]" strokeWidth={2.5} />
+          </div>
+          <span className="font-serif text-lg tracking-tight text-white/90">
+            automatik<span className="text-amber-400">.io</span>
           </span>
         </Link>
 
-        {items.length > 0 && (
-          <div className="flex gap-0.5 rounded-xl bg-secondary/70 p-1">
-            {items.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-xs font-medium transition-all sm:text-sm",
-                    active
-                      ? "bg-card text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-        )}
+        {/* Nav links */}
+        <div className="flex items-center gap-1">
+          {NAV_ITEMS[rol].map((item) => {
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "relative rounded-lg px-3 py-1.5 text-sm font-medium transition-all duration-200",
+                  active
+                    ? "text-amber-400"
+                    : "text-white/50 hover:text-white/80"
+                )}
+              >
+                {item.label}
+                {active && (
+                  <span className="absolute bottom-0 left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-gradient-to-r from-amber-400 to-amber-500" />
+                )}
+              </Link>
+            );
+          })}
+        </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-          <div className="relative">
-            <span className={cn("pointer-events-none absolute left-3 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full", actual.dot)} />
-            <select
-              value={rol}
-              onChange={(e) => setRol(e.target.value as RolUsuario)}
-              aria-label="Cambiar rol"
-              className={cn(
-                "appearance-none rounded-lg border border-input bg-card pl-6 pr-7 font-medium text-foreground transition-colors hover:border-primary/40 focus:border-primary",
-                isCompact ? "h-8 text-xs sm:h-9 sm:text-sm" : "h-9 text-xs sm:text-sm"
-              )}
+        {/* Right side: role + avatar */}
+        <div className="flex items-center gap-3">
+          <div ref={ref} className="relative">
+            <button
+              onClick={() => setOpen(!open)}
+              className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-amber-400/20 hover:bg-white/[0.06] hover:text-white/90"
             >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[rol])} />
+              {ROL_LABELS[rol]}
+              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+              <div className="absolute right-0 top-full z-50 mt-2 min-w-[140px] overflow-hidden rounded-xl border border-white/[0.08] bg-[hsl(230,14%,11%)] p-1 shadow-2xl shadow-black/40 animate-in-soft">
+                {(["admin", "vendedor", "empacador"] as Rol[]).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => { setRol(r); setOpen(false); }}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                      rol === r ? "bg-amber-400/10 text-amber-400" : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
+                    )}
+                  >
+                    <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[r])} />
+                    {ROL_LABELS[r]}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <span className="hidden text-sm text-muted-foreground md:inline">Adrian</span>
-
-          <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 text-[11px] font-semibold text-white sm:flex">
-            AR
-          </span>
+          <div className="hidden items-center gap-2 sm:flex">
+            <span className="text-xs text-white/40">{nombre}</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white shadow-lg shadow-violet-500/20">
+              {initials}
+            </div>
+          </div>
         </div>
       </div>
+      {/* Bottom gold line */}
+      <div className="gold-line" />
     </nav>
   );
 }
