@@ -187,7 +187,6 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           multiple
           className="hidden"
           onChange={addFoto}
