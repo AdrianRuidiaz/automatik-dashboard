@@ -17,10 +17,7 @@ const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
     { label: "Ventas", href: "/" },
     { label: "Pedidos", href: "/pedidos" },
   ],
-  empacador: [
-    { label: "Empaque", href: "/" },
-    { label: "Pedidos", href: "/pedidos" },
-  ],
+  empacador: [],
 };
 
 const ROL_LABELS: Record<RolUsuario, string> = { admin: "Admin", vendedor: "Vendedor", empacador: "Empacador" };
