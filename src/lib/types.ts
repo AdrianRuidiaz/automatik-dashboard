@@ -80,11 +80,11 @@ export const ESTADO_LABELS: Record<EstadoPedido, string> = {
 };
 
 export const ESTADO_COLORS: Record<EstadoPedido, string> = {
-  pending: "bg-amber-100 text-amber-800",
-  paid: "bg-green-100 text-green-800",
-  ready_to_ship: "bg-teal-100 text-teal-800",
-  shipped: "bg-blue-100 text-blue-800",
-  delivered: "bg-green-100 text-green-800",
-  cancelled: "bg-red-100 text-red-800",
-  returned: "bg-red-100 text-red-800",
+  pending: "bg-amber-500/15 text-amber-300 border border-amber-500/20",
+  paid: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+  ready_to_ship: "bg-teal-500/15 text-teal-300 border border-teal-500/20",
+  shipped: "bg-blue-500/15 text-blue-300 border border-blue-500/20",
+  delivered: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+  cancelled: "bg-red-500/15 text-red-300 border border-red-500/20",
+  returned: "bg-red-500/15 text-red-300 border border-red-500/20",
 };
