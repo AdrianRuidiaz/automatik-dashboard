@@ -12,8 +12,14 @@ const NAV_ITEMS: Record<RolUsuario, { href: string; label: string }[]> = {
     { href: "/", label: "Dashboard" },
     { href: "/pedidos", label: "Pedidos" },
   ],
-  vendedor: [],
-  empacador: [],
+  vendedor: [
+    { href: "/", label: "Documentos" },
+    { href: "/pedidos", label: "Pedidos" },
+  ],
+  empacador: [
+    { href: "/", label: "Empaque" },
+    { href: "/pedidos", label: "Pedidos" },
+  ],
 };
 
 const ROLES: { value: RolUsuario; label: string; dot: string }[] = [
