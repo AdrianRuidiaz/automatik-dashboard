@@ -1,18 +1,39 @@
 "use client";
 
 import {
-  BarChart,
-  Bar,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  Legend,
+  CartesianGrid,
 } from "recharts";
 import type { TendenciaDiaria } from "@/lib/types";
 
 interface TrendChartProps {
   data: TendenciaDiaria[];
+}
+
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-lg">
+      <p className="mb-1.5 text-xs font-medium text-foreground">{label}</p>
+      {payload.map((entry: any) => (
+        <div key={entry.name} className="flex items-center gap-2 text-xs">
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ background: entry.color }}
+          />
+          <span className="text-muted-foreground">{entry.name}</span>
+          <span className="ml-auto tabular font-semibold text-foreground">
+            {entry.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function TrendChart({ data }: TrendChartProps) {
@@ -21,41 +42,83 @@ export function TrendChart({ data }: TrendChartProps) {
       day: "numeric",
       month: "short",
     }),
-    ML: d.pedidos_ml,
+    "Mercado Libre": d.pedidos_ml,
     Falabella: d.pedidos_fa,
   }));
 
+  if (chartData.length === 0) {
+    return (
+      <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
+        Sin datos de tendencia para este periodo
+      </div>
+    );
+  }
+
   return (
-    <div className="rounded-xl bg-card p-4">
-      <ResponsiveContainer width="100%" height={180}>
-        <BarChart data={chartData} barGap={2}>
+    <div>
+      <div className="mb-3 flex items-center gap-5">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+          Mercado Libre
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+          Falabella
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={220}>
+        <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+          <defs>
+            <linearGradient id="gradML" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gradFA" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="hsl(40 10% 92%)"
+            vertical={false}
+          />
           <XAxis
             dataKey="fecha"
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: "hsl(240 5% 48%)" }}
             axisLine={false}
             tickLine={false}
+            dy={8}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+            tick={{ fontSize: 11, fill: "hsl(240 5% 48%)" }}
             axisLine={false}
             tickLine={false}
             allowDecimals={false}
           />
           <Tooltip
-            contentStyle={{
-              fontSize: 12,
-              borderRadius: 8,
-              border: "1px solid hsl(var(--border))",
-            }}
+            content={<CustomTooltip />}
+            cursor={{ stroke: "hsl(243 75% 59%)", strokeWidth: 1, strokeDasharray: "4 4", strokeOpacity: 0.4 }}
           />
-          <Legend
-            iconType="circle"
-            iconSize={8}
-            wrapperStyle={{ fontSize: 12 }}
+          <Area
+            type="monotone"
+            dataKey="Mercado Libre"
+            stroke="#6366f1"
+            strokeWidth={2.5}
+            fill="url(#gradML)"
+            dot={{ r: 3, fill: "#6366f1", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 2, stroke: "#fff" }}
           />
-          <Bar dataKey="ML" fill="#378ADD" radius={[3, 3, 0, 0]} />
-          <Bar dataKey="Falabella" fill="#EF9F27" radius={[3, 3, 0, 0]} />
-        </BarChart>
+          <Area
+            type="monotone"
+            dataKey="Falabella"
+            stroke="#f59e0b"
+            strokeWidth={2.5}
+            fill="url(#gradFA)"
+            dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
