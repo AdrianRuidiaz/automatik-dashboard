@@ -4,13 +4,16 @@ import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { OrdersTable } from "@/components/pedidos/orders-table";
 import { PackingCard } from "@/components/empacador/packing-card";
+import { PackingHistory } from "@/components/empacador/packing-history";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { fetchPedidos } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import type { Pedido, RolUsuario } from "@/lib/types";
 
 export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [tabEmpacador, setTabEmpacador] = useState<"pendientes" | "historial">("pendientes");
 
   const loadData = useCallback(async () => {
     try { setPedidos(await fetchPedidos()); } catch (err) { console.error(err); }
@@ -37,7 +40,7 @@ export default function PedidosPage() {
           {rol === "admin" && (
             <div className="space-y-5">
               <div>
-                <p className="eyebrow">Gesti&oacute;n</p>
+                <p className="eyebrow">Gesti\u00f3n</p>
                 <h1 className="display mt-1 text-2xl sm:text-3xl">
                   Todos los <em>pedidos</em>
                 </h1>
@@ -52,23 +55,64 @@ export default function PedidosPage() {
                 <div>
                   <p className="eyebrow">Bodega</p>
                   <h1 className="display mt-1 text-2xl sm:text-3xl">
-                    Pedidos por <em>empacar</em>
+                    {tabEmpacador === "pendientes"
+                      ? <>Pedidos por <em>empacar</em></>
+                      : <>Historial de <em>empaque</em></>
+                    }
                   </h1>
                 </div>
-                <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-                  {pendientes.length}
-                </span>
+                {tabEmpacador === "pendientes" && (
+                  <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                    {pendientes.length}
+                  </span>
+                )}
               </div>
-              {pendientes.length === 0 ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  No hay pedidos pendientes de empaque
-                </p>
+
+              {/* Tabs empacador */}
+              <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
+                <button
+                  onClick={() => setTabEmpacador("pendientes")}
+                  className={cn(
+                    "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                    tabEmpacador === "pendientes"
+                      ? "bg-primary/10 text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Pendientes
+                  {pendientes.length > 0 && (
+                    <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                      {pendientes.length}
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={() => setTabEmpacador("historial")}
+                  className={cn(
+                    "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all",
+                    tabEmpacador === "historial"
+                      ? "bg-primary/10 text-primary shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Historial
+                </button>
+              </div>
+
+              {tabEmpacador === "pendientes" ? (
+                pendientes.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-muted-foreground">
+                    No hay pedidos pendientes de empaque
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {pendientes.map((p) => (
+                      <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
+                    ))}
+                  </div>
+                )
               ) : (
-                <div className="space-y-3">
-                  {pendientes.map((p) => (
-                    <PackingCard key={p.id} pedido={p} onConfirm={loadData} />
-                  ))}
-                </div>
+                <PackingHistory pedidos={pedidos} />
               )}
             </div>
           )}
@@ -78,7 +122,7 @@ export default function PedidosPage() {
               <div>
                 <p className="eyebrow">Ventas</p>
                 <h1 className="display mt-1 text-2xl sm:text-3xl">
-                  Gesti&oacute;n de <em>documentos</em>
+                  Gesti\u00f3n de <em>documentos</em>
                 </h1>
               </div>
               <TaxDocsTable pedidos={pedidos} />
