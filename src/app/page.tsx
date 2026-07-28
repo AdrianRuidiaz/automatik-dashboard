@@ -27,7 +27,6 @@ export default function HomePage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-
   const loadData = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -46,13 +45,11 @@ export default function HomePage() {
     return () => { supabase.removeChannel(ch); };
   }, [loadData]);
 
-  // Empacador: pedidos por empacar
   const pendientes = useMemo(
     () => pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado)),
     [pedidos]
   );
 
-  // Empacador: historial (entregados, enviados)
   const historial = useMemo(
     () => pedidos
       .filter((p) => ["shipped", "delivered"].includes(p.estado))
@@ -60,7 +57,6 @@ export default function HomePage() {
     [pedidos]
   );
 
-  // Sort pendientes by urgency
   const pendientesOrdenados = useMemo(() => {
     return [...pendientes].sort((a, b) => {
       const now = Date.now();
@@ -73,7 +69,6 @@ export default function HomePage() {
     });
   }, [pendientes]);
 
-  // Filter by search
   const pendientesFiltrados = useMemo(() => {
     if (!busqueda.trim()) return pendientesOrdenados;
     const q = busqueda.trim().toLowerCase();
@@ -85,7 +80,6 @@ export default function HomePage() {
     );
   }, [pendientesOrdenados, busqueda]);
 
-  // Split urgent vs normal
   const urgentes = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return false;
@@ -107,7 +101,6 @@ export default function HomePage() {
     <AppShell>
       {(rol: RolUsuario) => (
         <>
-          {/* --- ADMIN --- */}
           {rol === "admin" && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
@@ -216,7 +209,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* --- EMPACADOR --- */}
           {rol === "empacador" && (
             <div className="space-y-0">
               <div className="flex items-end justify-between gap-3">
@@ -231,7 +223,6 @@ export default function HomePage() {
                 </span>
               </div>
 
-              {/* Tabs */}
               <div className="mt-3 flex gap-0.5 rounded-xl bg-secondary/70 p-1">
                 <button
                   onClick={() => { setEmpacadorTab("pendientes"); setBusqueda(""); }}
@@ -253,7 +244,6 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Tab: Por empacar */}
               {empacadorTab === "pendientes" && (
                 <>
                   <SearchBar
@@ -304,7 +294,6 @@ export default function HomePage() {
                 </>
               )}
 
-              {/* Tab: Historial */}
               {empacadorTab === "historial" && (
                 <div className="mt-3">
                   {historial.length === 0 ? (
@@ -354,7 +343,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* --- VENDEDOR --- */}
           {rol === "vendedor" && (
             <div className="space-y-5">
               <div>
