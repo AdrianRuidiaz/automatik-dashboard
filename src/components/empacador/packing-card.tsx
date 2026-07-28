@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, Image, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2 } from "lucide-react";
+import { Camera, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2, PackageCheck, User, Timer } from "lucide-react";
 import { cn, formatFechaCorta } from "@/lib/utils";
-import { uploadArchivo, registrarArchivo } from "@/lib/api";
+import { uploadArchivo, registrarArchivo, updateEstadoPedido } from "@/lib/api";
 import type { Pedido } from "@/lib/types";
 
 interface PackingCardProps {
@@ -11,26 +11,56 @@ interface PackingCardProps {
   onConfirm: () => void;
 }
 
+function DeadlineBadge({ fecha }: { fecha: string | null }) {
+  if (!fecha) return <span className="text-xs text-muted-foreground">Sin fecha l\u00edmite</span>;
+
+  const ahora = new Date();
+  const limite = new Date(fecha);
+  const diffMs = limite.getTime() - ahora.getTime();
+  const diffHoras = diffMs / 36e5;
+
+  if (diffHoras < 0) {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-400 animate-pulse">
+        <AlertTriangle className="h-3 w-3" /> Atrasado
+      </span>
+    );
+  }
+  if (diffHoras < 24) {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-medium text-rose-500">
+        <Timer className="h-3 w-3" /> Vence hoy
+      </span>
+    );
+  }
+  if (diffHoras < 48) {
+    return (
+      <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
+        <Clock className="h-3 w-3" /> Vence ma\u00f1ana
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+      <Clock className="h-3 w-3" /> {formatFechaCorta(fecha)}
+    </span>
+  );
+}
+
 export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
   const [fotos, setFotos] = useState<{ file: File; preview: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [marking, setMarking] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [packed, setPacked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
-
-  const horasRestantes = pedido.fecha_limite_despacho
-    ? (new Date(pedido.fecha_limite_despacho).getTime() - Date.now()) / 36e5
-    : null;
-  const venceHoy = horasRestantes !== null && horasRestantes < 24;
-  const urgente = horasRestantes !== null && horasRestantes < 6;
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const addFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     const nuevas = files.slice(0, 3 - fotos.length).map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
     setFotos((prev) => [...prev, ...nuevas]);
-    if (cameraRef.current) cameraRef.current.value = "";
-    if (galleryRef.current) galleryRef.current.value = "";
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const removeFoto = (idx: number) => {
@@ -66,60 +96,48 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
     }
   };
 
-  if (confirmed) {
-    return (
-      <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 sm:p-4">
-        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-600" />
-        <div className="min-w-0">
-          <span className="text-sm font-semibold">{pedido.id_plataforma}</span>
-          <span className="ml-2 text-xs text-emerald-600">Empacado</span>
-        </div>
-      </div>
-    );
-  }
+  const handleMarkPacked = async () => {
+    setMarking(true);
+    setError(null);
+    try {
+      await updateEstadoPedido(pedido.id, "ready_to_ship");
+      setPacked(true);
+      onConfirm();
+    } catch (err) {
+      console.error(err);
+      setError("No se pudo actualizar el estado. Reintenta.");
+    } finally {
+      setMarking(false);
+    }
+  };
 
-  const canAdd = fotos.length < 3;
+  const isDone = confirmed || packed;
 
   return (
-    <div
-      className={cn(
-        "rounded-xl border bg-card transition-all sm:p-4",
-        urgente
-          ? "border-rose-300 bg-rose-50/30 p-3"
-          : venceHoy
-            ? "border-amber-300 bg-amber-50/20 p-3"
-            : "border-border p-3"
-      )}
-    >
-      {/* Header */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <div className={cn("rounded-xl border border-border bg-card p-3 transition-all sm:p-4", isDone && "opacity-60")}>
+      {/* Header: order number + platform badge + deadline */}
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="tabular text-base font-semibold">{pedido.id_plataforma}</span>
-          <span
-            className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-medium",
-              pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark"
-            )}
-          >
+          <span className="text-sm font-semibold sm:text-base">{pedido.id_plataforma}</span>
+          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium",
+            pedido.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
             {pedido.plataforma === "ML" ? "ML" : "FA"}
           </span>
         </div>
-        {urgente ? (
-          <span className="flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700">
-            <AlertTriangle className="h-3.5 w-3.5" /> Urgente
+        {isDone ? (
+          <span className="flex items-center gap-1 text-xs font-medium text-emerald-500">
+            <CheckCircle className="h-3.5 w-3.5" /> Empacado
           </span>
-        ) : venceHoy ? (
-          <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-            <AlertTriangle className="h-3.5 w-3.5" /> Vence hoy
-          </span>
-        ) : horasRestantes !== null ? (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">{formatFechaCorta(pedido.fecha_limite_despacho)}</span>
-            <span className="sm:hidden">{Math.floor(horasRestantes)}h</span>
-          </span>
-        ) : null}
+        ) : (
+          <DeadlineBadge fecha={pedido.fecha_limite_despacho} />
+        )}
       </div>
+
+      {/* Client name */}
+      <p className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <User className="h-3 w-3 shrink-0" />
+        <span className="truncate">{pedido.cliente_nombre || "Cliente no registrado"}</span>
+      </p>
 
       {/* Items */}
       <div className="mb-3 space-y-1">
@@ -128,7 +146,7 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
             <span className="mt-0.5 shrink-0 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground">
               x{item.quantity}
             </span>
-            <span className="line-clamp-2 text-muted-foreground">{item.title}</span>
+            <span className="text-muted-foreground">{item.title}</span>
           </div>
         ))}
         {(pedido.items ?? []).length === 0 && (
@@ -136,84 +154,68 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
         )}
       </div>
 
-      {/* Evidence */}
+      {/* Evidence upload section */}
       <div className="border-t border-border pt-3">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque ({fotos.length}/3)
+          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque (1 a 3 fotos)
         </p>
 
-        {/* Photo previews */}
-        {fotos.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            {fotos.map((foto, i) => (
-              <div key={i} className="relative h-24 w-24 overflow-hidden rounded-lg border border-border sm:h-20 sm:w-20">
-                <img src={foto.preview} alt={`Evidencia ${i + 1}`} className="h-full w-full object-cover" />
+        <div className="flex flex-wrap items-center gap-2">
+          {fotos.map((foto, i) => (
+            <div key={i} className="relative h-20 w-20 overflow-hidden rounded-lg border border-border">
+              <img src={foto.preview} alt={`Evidencia ${i + 1}`} className="h-full w-full object-cover" />
+              {!isDone && (
                 <button
                   onClick={() => removeFoto(i)}
                   aria-label="Quitar foto"
-                  className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white active:bg-black/80 sm:h-6 sm:w-6"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white"
                 >
-                  <X className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
-              </div>
-            ))}
-          </div>
-        )}
+              )}
+            </div>
+          ))}
 
-        {/* Camera / Gallery buttons */}
-        {canAdd && (
-          <div className="flex gap-2">
+          {fotos.length < 3 && !isDone && (
             <button
-              onClick={() => cameraRef.current?.click()}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 py-3 text-sm font-medium text-primary active:bg-primary/10 sm:flex-none sm:rounded-lg sm:border-input sm:bg-background sm:px-4 sm:py-2.5 sm:text-muted-foreground"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-background text-muted-foreground active:bg-secondary"
             >
-              <Camera className="h-5 w-5 sm:h-4 sm:w-4" />
-              <span>Camara</span>
+              <Plus className="h-5 w-5" />
+              <span className="text-[10px]">Foto {fotos.length + 1}</span>
             </button>
-            <button
-              onClick={() => galleryRef.current?.click()}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300/50 bg-violet-50/50 py-3 text-sm font-medium text-violet-600 active:bg-violet-100 sm:flex-none sm:rounded-lg sm:border-input sm:bg-background sm:px-4 sm:py-2.5 sm:text-muted-foreground"
-            >
-              <Image className="h-5 w-5 sm:h-4 sm:w-4" />
-              <span>Galeria</span>
-            </button>
-          </div>
-        )}
+          )}
+        </div>
 
-        {error && <p className="mt-2 text-xs text-rose-600">{error}</p>}
+        {error && <p className="mt-2 text-xs text-rose-500">{error}</p>}
 
-        {fotos.length > 0 && (
-          <button
-            onClick={handleConfirm}
-            disabled={uploading}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 active:scale-[0.98] active:bg-emerald-700 disabled:opacity-60 sm:w-auto sm:rounded-lg sm:py-3 sm:shadow-none"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" /> Subiendo...
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" /> Confirmar empaque
-              </>
+        {/* Action buttons */}
+        {!isDone && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {fotos.length > 0 && (
+              <button
+                onClick={handleConfirm}
+                disabled={uploading || marking}
+                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white active:bg-emerald-700 disabled:opacity-60"
+              >
+                {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Check className="h-4 w-4" /> Confirmar evidencia</>}
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleMarkPacked}
+              disabled={marking || uploading}
+              className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary active:bg-primary/20 disabled:opacity-60"
+            >
+              {marking ? <><Loader2 className="h-4 w-4 animate-spin" /> Marcando...</> : <><PackageCheck className="h-4 w-4" /> Marcar empacado</>}
+            </button>
+          </div>
         )}
 
-        {/* Camera input - opens camera directly on mobile */}
         <input
-          ref={cameraRef}
+          ref={fileRef}
           type="file"
           accept="image/*"
           capture="environment"
-          className="hidden"
-          onChange={addFoto}
-        />
-        {/* Gallery input - opens file picker / photo gallery */}
-        <input
-          ref={galleryRef}
-          type="file"
-          accept="image/*"
           multiple
           className="hidden"
           onChange={addFoto}
