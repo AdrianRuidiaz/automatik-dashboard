@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Zap, ChevronDown } from "lucide-react";
-import { useRole, type Rol } from "@/lib/role-context";
+import { useRole } from "@/lib/role-context";
+import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from "react";
 
-const NAV_ITEMS: Record<Rol, { label: string; href: string }[]> = {
+const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   admin: [
     { label: "Dashboard", href: "/" },
     { label: "Pedidos", href: "/pedidos" },
@@ -22,8 +23,8 @@ const NAV_ITEMS: Record<Rol, { label: string; href: string }[]> = {
   ],
 };
 
-const ROL_LABELS: Record<Rol, string> = { admin: "Admin", vendedor: "Vendedor", empacador: "Empacador" };
-const ROL_COLORS: Record<Rol, string> = {
+const ROL_LABELS: Record<RolUsuario, string> = { admin: "Admin", vendedor: "Vendedor", empacador: "Empacador" };
+const ROL_COLORS: Record<RolUsuario, string> = {
   admin: "bg-amber-400",
   vendedor: "bg-emerald-400",
   empacador: "bg-sky-400",
@@ -31,7 +32,7 @@ const ROL_COLORS: Record<Rol, string> = {
 
 export function Navbar() {
   const pathname = usePathname();
-  const { rol, setRol, nombre } = useRole();
+  const { rol, setRol } = useRole();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -42,13 +43,6 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
-  const initials = nombre
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[hsl(230,15%,7%)]/80 backdrop-blur-xl">
@@ -87,7 +81,7 @@ export function Navbar() {
           })}
         </div>
 
-        {/* Right side: role + avatar */}
+        {/* Right side */}
         <div className="flex items-center gap-3">
           <div ref={ref} className="relative">
             <button
@@ -100,7 +94,7 @@ export function Navbar() {
             </button>
             {open && (
               <div className="absolute right-0 top-full z-50 mt-2 min-w-[140px] overflow-hidden rounded-xl border border-white/[0.08] bg-[hsl(230,14%,11%)] p-1 shadow-2xl shadow-black/40 animate-in-soft">
-                {(["admin", "vendedor", "empacador"] as Rol[]).map((r) => (
+                {(["admin", "vendedor", "empacador"] as RolUsuario[]).map((r) => (
                   <button
                     key={r}
                     onClick={() => { setRol(r); setOpen(false); }}
@@ -118,14 +112,13 @@ export function Navbar() {
           </div>
 
           <div className="hidden items-center gap-2 sm:flex">
-            <span className="text-xs text-white/40">{nombre}</span>
+            <span className="text-xs text-white/40">Adrian</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white shadow-lg shadow-violet-500/20">
-              {initials}
+              AR
             </div>
           </div>
         </div>
       </div>
-      {/* Bottom gold line */}
       <div className="gold-line" />
     </nav>
   );
