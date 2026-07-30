@@ -24,13 +24,18 @@ export async function POST(
   const supabaseAdmin = getSupabaseAdmin();
 
   try {
-    const { data: pedido, error: errorPedido } = await supabaseAdmin
+    // NOTA: getSupabaseAdmin() no usa un tipo Database<> generado, así que
+    // supabase-js/postgrest-js a veces infiere el resultado de .select()
+    // como `never` (rompía el build de Vercel: "Property 'estado' does not
+    // exist on type 'never'"). Casteamos explícitamente al shape real.
+    const { data: pedidoData, error: errorPedido } = await supabaseAdmin
       .from("pedidos")
       .select("id, estado")
       .eq("id", pedidoId)
       .maybeSingle();
 
     if (errorPedido) throw errorPedido;
+    const pedido = pedidoData as { id: string; estado: string } | null;
     if (!pedido) {
       return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
     }
