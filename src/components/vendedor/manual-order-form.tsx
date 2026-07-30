@@ -3,7 +3,13 @@
 import { useState, useRef } from "react";
 import { Search, Check, ArrowLeft, Upload, Loader2, AlertTriangle, Edit } from "lucide-react";
 import { cn, formatCLP, formatFechaLarga } from "@/lib/utils";
-import { upsertPedido } from "@/lib/api";
+import {
+  upsertPedido,
+  existePedidoDuplicado,
+  verificarPdfDisponible,
+  uploadArchivo,
+  registrarArchivo,
+} from "@/lib/api";
 import type { Plataforma, PedidoItem } from "@/lib/types";
 
 type Step = "identify" | "verify" | "confirm";
@@ -25,16 +31,30 @@ export function ManualOrderForm() {
   const [etiquetaFile, setEtiquetaFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicado, setDuplicado] = useState(false);
   const [apiResult, setApiResult] = useState<ApiResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Tarea: validación de pedidos duplicados (creación manual).
+  // Se chequea ANTES de llamar a la API externa de la plataforma: si el
+  // número de pedido ya existe en el sistema, bloqueamos aquí mismo, sin
+  // gastar una consulta a Mercado Libre/Falabella y sin perder lo que el
+  // vendedor ya escribió en el formulario.
   const handleSearch = async () => {
     if (!orderNumber.trim()) return;
     setLoading(true);
     setError(null);
+    setDuplicado(false);
     try {
+      const existente = await existePedidoDuplicado(orderNumber.trim());
+      if (existente) {
+        setDuplicado(true);
+        setError("Este pedido ya existe en el sistema.");
+        return;
+      }
+
       const res = await fetch(
         `/api/orders/lookup?order=${encodeURIComponent(orderNumber)}&platform=${plataforma}`
       );
@@ -52,11 +72,34 @@ export function ManualOrderForm() {
     }
   };
 
+  // Tarea: validar PDF/Dropbox antes de guardar. Si el PDF no existe o falla
+  // la verificación, se aborta ANTES de tocar Supabase/Airtable: no queda
+  // ningún registro a medias y el vendedor puede reintentar sin duplicar
+  // nada (upsert_pedido es idempotente por id_plataforma).
   const handleConfirm = async () => {
     if (!apiResult) return;
     setSaving(true);
+    setError(null);
     try {
-      await upsertPedido({
+      const verificacion = await verificarPdfDisponible(orderNumber, plataforma);
+      if (!verificacion.existe) {
+        setError(
+          verificacion.mensaje ||
+            "No se encontró el PDF de este pedido en Dropbox. Genera la guía de despacho antes de registrar el pedido."
+        );
+        return;
+      }
+
+      let etiquetaUrl: string | null = verificacion.url ?? null;
+      if (etiquetaFile) {
+        etiquetaUrl = await uploadArchivo(
+          "etiquetas",
+          `${orderNumber}/etiqueta_${Date.now()}.pdf`,
+          etiquetaFile
+        );
+      }
+
+      const resultado = await upsertPedido({
         p_cliente_id: process.env.NEXT_PUBLIC_CLIENTE_ID!,
         p_plataforma: plataforma === "ML" ? "ML" : "Falabella",
         p_id_plataforma: orderNumber,
@@ -66,13 +109,31 @@ export function ManualOrderForm() {
         p_total_pagado: apiResult.total_pagado,
         p_fecha_pedido: apiResult.fecha_pedido,
         p_fecha_limite_despacho: apiResult.fecha_limite_despacho,
-        p_etiqueta_url: null,
+        p_etiqueta_url: etiquetaUrl,
         p_items: apiResult.items,
       });
+
+      if (etiquetaUrl) {
+        try {
+          await registrarArchivo({
+            pedido_id: resultado.pedido_id,
+            tipo: "etiqueta",
+            url: etiquetaUrl,
+            nombre_archivo: etiquetaFile?.name ?? null,
+          });
+        } catch (err) {
+          // El pedido ya quedó registrado correctamente; si falla solo el
+          // registro del archivo lo dejamos en el log en vez de bloquear
+          // al vendedor con un error confuso en este punto.
+          console.error("No se pudo registrar el archivo de etiqueta:", err);
+        }
+      }
+
       setDone(true);
       setStep("confirm");
     } catch (err) {
       console.error("Error registrando pedido:", err);
+      setError("No se pudo registrar el pedido. Intenta nuevamente.");
     } finally {
       setSaving(false);
     }
@@ -84,6 +145,7 @@ export function ManualOrderForm() {
     setApiResult(null);
     setEtiquetaFile(null);
     setError(null);
+    setDuplicado(false);
     setDone(false);
   };
 
@@ -140,9 +202,20 @@ export function ManualOrderForm() {
               <label className="text-xs text-muted-foreground">N° de pedido</label>
               <input
                 value={orderNumber}
-                onChange={(e) => setOrderNumber(e.target.value)}
+                onChange={(e) => {
+                  setOrderNumber(e.target.value);
+                  if (duplicado) {
+                    setDuplicado(false);
+                    setError(null);
+                  }
+                }}
                 placeholder="Ej: 2850339714 o SP-84521"
-                className="rounded-md border border-input bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+                className={cn(
+                  "rounded-md border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring",
+                  duplicado
+                    ? "border-red-500 focus:ring-red-500"
+                    : "border-input"
+                )}
               />
             </div>
             <div className="flex flex-col gap-1">
@@ -182,6 +255,9 @@ export function ManualOrderForm() {
               className="hidden"
               onChange={(e) => setEtiquetaFile(e.target.files?.[0] ?? null)}
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Si no adjuntas la etiqueta aquí, al confirmar se verificará que ya exista el PDF de la guía de despacho en Dropbox.
+            </p>
           </div>
 
           {error && (
@@ -284,9 +360,16 @@ export function ManualOrderForm() {
             </div>
           </div>
 
+          {error && (
+            <div className="mt-4 flex items-center gap-2 rounded-md bg-red-50 p-3 text-sm text-red-700">
+              <AlertTriangle className="h-4 w-4" />
+              {error}
+            </div>
+          )}
+
           <div className="mt-4 flex items-center justify-end gap-3 border-t border-border pt-4">
             <button
-              onClick={() => setStep("identify")}
+              onClick={() => { setStep("identify"); setError(null); }}
               className="inline-flex items-center gap-1 rounded-md border border-input px-4 py-2 text-sm text-muted-foreground"
             >
               <ArrowLeft className="h-4 w-4" /> Volver

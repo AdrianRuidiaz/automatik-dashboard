@@ -23,7 +23,8 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
       .finally(() => setLoading(false));
   }, [pedido.id]);
 
-  const evidencias = archivos.filter((a) => a.tipo === "evidencia");
+  // tipo real en la base de datos es "evidencia_empaque" (ver public.archivos)
+  const evidencias = archivos.filter((a) => a.tipo === "evidencia_empaque");
 
   const getPublicUrl = (path: string) =>
     supabase.storage.from("evidencias").getPublicUrl(path).data.publicUrl;
@@ -69,7 +70,7 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
           ) : evidencias.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {evidencias.map((ev) => {
-                const url = getPublicUrl(ev.storage_path);
+                const url = getPublicUrl(ev.url);
                 return (
                   <button
                     key={ev.id}
@@ -78,7 +79,7 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
                   >
                     <img
                       src={url}
-                      alt={ev.nombre_archivo}
+                      alt={ev.nombre_archivo ?? "Evidencia"}
                       className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
@@ -123,6 +124,9 @@ export function PackingHistory({ pedidos }: PackingHistoryProps) {
     });
   };
 
+  // Igual que en las demás vistas: los pedidos empacados/entregados son
+  // pedidos activos. Si uno fue cancelado después de empacarse no debería
+  // seguir apareciendo mezclado en este historial de operación.
   const completados = pedidos
     .filter((p) => ["shipped", "delivered"].includes(p.estado))
     .sort((a, b) => {
@@ -196,7 +200,7 @@ export function PackingHistory({ pedidos }: PackingHistoryProps) {
                     </span>
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {p.cliente_nombre || "Sin cliente"} \u00b7 {formatFechaCorta(p.fecha_pedido)}
+                    {p.cliente_nombre || "Sin cliente"} &middot; {formatFechaCorta(p.fecha_pedido)}
                   </span>
                 </span>
 
@@ -227,7 +231,7 @@ export function PackingHistory({ pedidos }: PackingHistoryProps) {
 
       {visibles.length === 0 && busqueda && (
         <p className="py-8 text-center text-sm text-muted-foreground">
-          Sin resultados para \u201c{busqueda}\u201d
+          Sin resultados para &ldquo;{busqueda}&rdquo;
         </p>
       )}
     </div>

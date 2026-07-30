@@ -3,13 +3,16 @@
 import { useState, useRef } from "react";
 import { Camera, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2, PackageCheck, User, Timer } from "lucide-react";
 import { cn, formatFechaCorta } from "@/lib/utils";
-import { uploadArchivo, registrarArchivo, updateEstadoPedido } from "@/lib/api";
+import { uploadArchivo, registrarArchivo, marcarPedidoEmpacado } from "@/lib/api";
 import type { Pedido } from "@/lib/types";
 
 interface PackingCardProps {
   pedido: Pedido;
   onConfirm: () => void;
 }
+
+const MIN_FOTOS = 1;
+const MAX_FOTOS = 3;
 
 function DeadlineBadge({ fecha }: { fecha: string | null }) {
   if (!fecha) return <span className="text-xs text-muted-foreground">Sin fecha límite</span>;
@@ -49,17 +52,16 @@ function DeadlineBadge({ fecha }: { fecha: string | null }) {
 
 export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
   const [fotos, setFotos] = useState<{ file: File; preview: string }[]>([]);
-  const [uploading, setUploading] = useState(false);
   const [marking, setMarking] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const [packed, setPacked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const addFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    const nuevas = files.slice(0, 3 - fotos.length).map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
+    const nuevas = files.slice(0, MAX_FOTOS - fotos.length).map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
     setFotos((prev) => [...prev, ...nuevas]);
+    setError(null);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -70,48 +72,57 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
     });
   };
 
-  const handleConfirm = async () => {
-    if (!fotos.length) return;
-    setUploading(true);
+  // Tarea: la evidencia fotográfica (1 a 3 fotos) es obligatoria para poder
+  // marcar un pedido como empacado. Antes esto eran dos botones separados y
+  // se podía marcar "empacado" sin haber subido ninguna foto. Ahora es un
+  // único flujo: subir fotos -> el backend vuelve a validar la cantidad ->
+  // recién ahí se cambia el estado del pedido.
+  const handleMarkPacked = async () => {
+    if (fotos.length < MIN_FOTOS) {
+      setError(`Debes adjuntar al menos ${MIN_FOTOS} foto de evidencia antes de marcar como empacado.`);
+      return;
+    }
+    if (fotos.length > MAX_FOTOS) {
+      setError(`Solo puedes adjuntar hasta ${MAX_FOTOS} fotos de evidencia.`);
+      return;
+    }
+
+    setMarking(true);
     setError(null);
     try {
       for (let i = 0; i < fotos.length; i++) {
         const ext = (fotos[i].file.name.split(".").pop() || "jpg").toLowerCase();
-        const path = `${pedido.id_plataforma}/evidencia_${i + 1}.${ext}`;
-        await uploadArchivo("evidencias", path, fotos[i].file);
+        const path = `${pedido.id_plataforma}/evidencia_${i + 1}_${Date.now()}.${ext}`;
+        const url = await uploadArchivo("evidencias", path, fotos[i].file);
         await registrarArchivo({
           pedido_id: pedido.id,
-          tipo: "evidencia",
-          storage_path: path,
+          tipo: "evidencia_empaque",
+          url,
           nombre_archivo: fotos[i].file.name,
         });
       }
-      setConfirmed(true);
+
+      const resultado = await marcarPedidoEmpacado(pedido.id);
+      if (!resultado.ok) {
+        // Las fotos ya quedaron subidas y registradas; solo falló el cambio
+        // de estado. El usuario puede reintentar sin perder ni duplicar
+        // la evidencia ya guardada.
+        setError(resultado.error || "No se pudo marcar el pedido como empacado. Reintenta.");
+        return;
+      }
+
+      setPacked(true);
       onConfirm();
     } catch (err) {
       console.error(err);
       setError("No se pudo subir la evidencia. Reintenta.");
     } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleMarkPacked = async () => {
-    setMarking(true);
-    setError(null);
-    try {
-      await updateEstadoPedido(pedido.id, "ready_to_ship");
-      setPacked(true);
-      onConfirm();
-    } catch (err) {
-      console.error(err);
-      setError("No se pudo actualizar el estado. Reintenta.");
-    } finally {
       setMarking(false);
     }
   };
 
-  const isDone = confirmed || packed;
+  const isDone = packed;
+  const puedeMarcar = fotos.length >= MIN_FOTOS && fotos.length <= MAX_FOTOS;
 
   return (
     <div className={cn("rounded-xl border border-border bg-card p-3 transition-all sm:p-4", isDone && "opacity-60")}>
@@ -157,7 +168,7 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
       {/* Evidence upload section */}
       <div className="border-t border-border pt-3">
         <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque (1 a 3 fotos)
+          <Camera className="h-3.5 w-3.5" /> Evidencia de empaque (obligatoria, 1 a 3 fotos)
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -176,7 +187,7 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
             </div>
           ))}
 
-          {fotos.length < 3 && !isDone && (
+          {fotos.length < MAX_FOTOS && !isDone && (
             <button
               onClick={() => fileRef.current?.click()}
               className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-background text-muted-foreground active:bg-secondary"
@@ -187,26 +198,29 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           )}
         </div>
 
+        {!isDone && fotos.length === 0 && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs text-amber-500">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+            La evidencia fotográfica es obligatoria para marcar este pedido como empacado.
+          </p>
+        )}
+
         {error && <p className="mt-2 text-xs text-rose-500">{error}</p>}
 
-        {/* Action buttons */}
+        {/* Action button (unificado) */}
         {!isDone && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {fotos.length > 0 && (
-              <button
-                onClick={handleConfirm}
-                disabled={uploading || marking}
-                className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white active:bg-emerald-700 disabled:opacity-60"
-              >
-                {uploading ? <><Loader2 className="h-4 w-4 animate-spin" /> Subiendo...</> : <><Check className="h-4 w-4" /> Confirmar evidencia</>}
-              </button>
-            )}
             <button
               onClick={handleMarkPacked}
-              disabled={marking || uploading}
-              className="flex items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary active:bg-primary/20 disabled:opacity-60"
+              disabled={marking || !puedeMarcar}
+              title={!puedeMarcar ? "Adjunta entre 1 y 3 fotos de evidencia para continuar" : undefined}
+              className="flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white active:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {marking ? <><Loader2 className="h-4 w-4 animate-spin" /> Marcando...</> : <><PackageCheck className="h-4 w-4" /> Marcar empacado</>}
+              {marking ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Marcando...</>
+              ) : (
+                <><PackageCheck className="h-4 w-4" /> Marcar como empacado</>
+              )}
             </button>
           </div>
         )}

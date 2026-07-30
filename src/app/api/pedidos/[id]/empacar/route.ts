@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase-admin";
+
+const MIN_FOTOS = 1;
+const MAX_FOTOS = 3;
+
+// Tarea: evidencia fotográfica obligatoria para "Marcar como empacado".
+//
+// El frontend (packing-card.tsx) ya valida 1-3 fotos antes de llegar aquí,
+// pero esa validación por sí sola no es confiable: cualquiera con la anon
+// key podría llamar a updateEstadoPedido directamente sin pasar por la UI.
+// Por eso esta ruta vuelve a contar, en el servidor, cuántos archivos tipo
+// "evidencia_empaque" tiene el pedido antes de permitir el cambio de estado.
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: pedidoId } = await params;
+
+  if (!pedidoId) {
+    return NextResponse.json({ error: "Falta el id del pedido" }, { status: 400 });
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+
+  try {
+    const { data: pedido, error: errorPedido } = await supabaseAdmin
+      .from("pedidos")
+      .select("id, estado")
+      .eq("id", pedidoId)
+      .maybeSingle();
+
+    if (errorPedido) throw errorPedido;
+    if (!pedido) {
+      return NextResponse.json({ error: "Pedido no encontrado" }, { status: 404 });
+    }
+    if (pedido.estado === "cancelled") {
+      return NextResponse.json(
+        { error: "No se puede marcar como empacado un pedido cancelado" },
+        { status: 409 }
+      );
+    }
+
+    const { count, error: errorArchivos } = await supabaseAdmin
+      .from("archivos")
+      .select("id", { count: "exact", head: true })
+      .eq("pedido_id", pedidoId)
+      .eq("tipo", "evidencia_empaque");
+
+    if (errorArchivos) throw errorArchivos;
+
+    const totalFotos = count ?? 0;
+
+    if (totalFotos < MIN_FOTOS) {
+      return NextResponse.json(
+        {
+          error: `Debes adjuntar al menos ${MIN_FOTOS} foto de evidencia antes de marcar el pedido como empacado.`,
+        },
+        { status: 422 }
+      );
+    }
+    if (totalFotos > MAX_FOTOS) {
+      return NextResponse.json(
+        { error: `Este pedido tiene más de ${MAX_FOTOS} fotos de evidencia. Revisa antes de continuar.` },
+        { status: 422 }
+      );
+    }
+
+    const { error: errorUpdate } = await supabaseAdmin
+      .from("pedidos")
+      .update({ estado: "ready_to_ship", updated_at: new Date().toISOString() })
+      .eq("id", pedidoId);
+
+    if (errorUpdate) throw errorUpdate;
+
+    return NextResponse.json({ ok: true, fotos: totalFotos });
+  } catch (err) {
+    console.error(`empacar: error procesando pedido ${pedidoId}:`, err);
+    return NextResponse.json(
+      { error: "Error interno al marcar el pedido como empacado" },
+      { status: 500 }
+    );
+  }
+}
