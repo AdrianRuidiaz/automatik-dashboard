@@ -9,13 +9,11 @@ import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { uploadArchivo, registrarArchivo, fetchArchivos } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import {
-  ESTADO_LABELS,
   esDocumentoTributario,
   TIPOS_DOCUMENTO_TRIBUTARIO,
   type Pedido,
   type Archivo,
   type TipoDocumentoTributario,
-  type EstadoPedido,
 } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
@@ -124,17 +122,6 @@ function DetalleVendedor({ pedido, doc }: { pedido: Pedido; doc?: Archivo }) {
 
 type VistaTab = "activos" | "cancelados";
 
-const ESTADOS_FILTER_ACTIVOS: { key: "all" | EstadoPedido; label: string }[] = [
-  { key: "all", label: "Todos" },
-  { key: "not_paid", label: "Sin pagar" },
-  { key: "pending", label: "Pendiente" },
-  { key: "paid", label: "Pagado" },
-  { key: "ready_to_ship", label: "Listo" },
-  { key: "shipped", label: "Enviado" },
-  { key: "delivered", label: "Entregado" },
-  { key: "returned", label: "Devuelto" },
-];
-
 const DOC_FILTROS: { key: "all" | "sin" | TipoDocumentoTributario; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "sin", label: "Sin documento" },
@@ -147,7 +134,6 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
   // Tarea: manejo de pedidos cancelados — nunca se eliminan y no se mezclan
   // visualmente con los activos por defecto. Se navegan en una pestaña aparte.
   const [tab, setTab] = useState<VistaTab>("activos");
-  const [estadoFilter, setEstadoFilter] = useState<"all" | EstadoPedido>("all");
   const [filter, setFilter] = useState<"all" | "sin" | TipoDocumentoTributario>("all");
   const [busqueda, setBusqueda] = useState("");
   const [docs, setDocs] = useState<Record<string, Archivo | undefined>>({});
@@ -207,7 +193,6 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
     const d = docs[p.id];
     const q = busqueda.trim().toLowerCase();
     if (q && !(p.id_plataforma.toLowerCase().includes(q) || (p.cliente_nombre || "").toLowerCase().includes(q))) return false;
-    if (tab === "activos" && estadoFilter !== "all" && p.estado !== estadoFilter) return false;
     if (filter === "all") return true;
     if (filter === "sin") return !d;
     return d?.tipo === filter;
@@ -253,13 +238,6 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
         </div>
         <span className="ml-auto text-xs text-muted-foreground">{visibles.length} pedidos</span>
       </div>
-
-      {tab === "activos" && (
-        <div className="mb-3">
-          <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Estado del pedido</p>
-          <FiltroPills options={ESTADOS_FILTER_ACTIVOS} value={estadoFilter} onChange={setEstadoFilter} />
-        </div>
-      )}
 
       <div className="mb-4">
         <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Documento tributario</p>
