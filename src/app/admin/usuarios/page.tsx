@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Loader2, UserPlus } from "lucide-react";
+import { AppShell } from "@/components/layout/app-shell";
 import type { RolUsuario } from "@/lib/types";
 
 interface UsuarioRol {
@@ -60,73 +61,75 @@ export default function UsuariosPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-medium">Equipo</h1>
-        <p className="text-sm text-muted-foreground">Invita y administra quién tiene acceso al panel.</p>
-      </div>
-
-      <form onSubmit={handleInvitar} className="card-premium flex flex-wrap items-end gap-3 p-4">
-        <div className="min-w-[160px] flex-1">
-          <label className="mb-1 block text-xs text-muted-foreground">Nombre</label>
-          <input required value={nombre} onChange={(e) => setNombre(e.target.value)}
-            className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
+    <AppShell>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-medium">Equipo</h1>
+          <p className="text-sm text-muted-foreground">Invita y administra quién tiene acceso al panel.</p>
         </div>
-        <div className="min-w-[200px] flex-1">
-          <label className="mb-1 block text-xs text-muted-foreground">Correo</label>
-          <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
-        </div>
-        <div className="min-w-[140px]">
-          <label className="mb-1 block text-xs text-muted-foreground">Rol</label>
-          <select value={rol} onChange={(e) => setRol(e.target.value as RolUsuario)}
-            className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary">
-            {ROLES_INVITABLES.map((r) => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <button disabled={enviando} type="submit"
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
-          {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
-          Invitar
-        </button>
-      </form>
 
-      {mensaje && (
-        <p className={mensaje.tipo === "ok" ? "text-sm text-emerald-400" : "text-sm text-red-500"}>{mensaje.texto}</p>
-      )}
+        <form onSubmit={handleInvitar} className="card-premium flex flex-wrap items-end gap-3 p-4">
+          <div className="min-w-[160px] flex-1">
+            <label className="mb-1 block text-xs text-muted-foreground">Nombre</label>
+            <input required value={nombre} onChange={(e) => setNombre(e.target.value)}
+              className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
+          </div>
+          <div className="min-w-[200px] flex-1">
+            <label className="mb-1 block text-xs text-muted-foreground">Correo</label>
+            <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
+          </div>
+          <div className="min-w-[140px]">
+            <label className="mb-1 block text-xs text-muted-foreground">Rol</label>
+            <select value={rol} onChange={(e) => setRol(e.target.value as RolUsuario)}
+              className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary">
+              {ROLES_INVITABLES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <button disabled={enviando} type="submit"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
+            {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+            Invitar
+          </button>
+        </form>
 
-      <div className="card-premium overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="border-b border-white/[0.06] text-left text-xs text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 font-medium">Nombre</th>
-              <th className="px-4 py-3 font-medium">Correo</th>
-              <th className="px-4 py-3 font-medium">Rol</th>
-              <th className="px-4 py-3 font-medium">Estado</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cargando ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
-                <Loader2 className="mx-auto h-4 w-4 animate-spin" />
-              </td></tr>
-            ) : usuarios.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Sin usuarios aún</td></tr>
-            ) : usuarios.map((u) => (
-              <tr key={u.id} className="border-b border-white/[0.04] last:border-0">
-                <td className="px-4 py-3">{u.nombre}</td>
-                <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                <td className="px-4 py-3 capitalize">{u.rol.replace("_", " ")}</td>
-                <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${u.activo ? "bg-emerald-400/10 text-emerald-400" : "bg-white/[0.06] text-muted-foreground"}`}>
-                    {u.activo ? "Activo" : "Inactivo"}
-                  </span>
-                </td>
+        {mensaje && (
+          <p className={mensaje.tipo === "ok" ? "text-sm text-emerald-400" : "text-sm text-red-500"}>{mensaje.texto}</p>
+        )}
+
+        <div className="card-premium overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="border-b border-white/[0.06] text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 font-medium">Nombre</th>
+                <th className="px-4 py-3 font-medium">Correo</th>
+                <th className="px-4 py-3 font-medium">Rol</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {cargando ? (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                  <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+                </td></tr>
+              ) : usuarios.length === 0 ? (
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Sin usuarios aún</td></tr>
+              ) : usuarios.map((u) => (
+                <tr key={u.id} className="border-b border-white/[0.04] last:border-0">
+                  <td className="px-4 py-3">{u.nombre}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                  <td className="px-4 py-3 capitalize">{u.rol.replace("_", " ")}</td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${u.activo ? "bg-emerald-400/10 text-emerald-400" : "bg-white/[0.06] text-muted-foreground"}`}>
+                      {u.activo ? "Activo" : "Inactivo"}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
