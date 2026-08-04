@@ -52,7 +52,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const redirectTo = `${req.nextUrl.origin}/auth/set-password`;
+    // El cliente de Supabase (@supabase/ssr) usa flujo PKCE por defecto: el
+    // link del correo trae "?code=..." en vez del hash "#access_token=...".
+    // /auth/set-password solo llama a getSession() y nunca intercambia ese
+    // code, asi que se quedaba pegado en "Verificando invitacion..." para
+    // siempre. /auth/callback ya sabe hacer exchangeCodeForSession (se
+    // construyo para el login con Google) -- se reutiliza aca para dejar
+    // la sesion real (cookies) puesta antes de llegar a set-password.
+    const redirectTo = `${req.nextUrl.origin}/auth/callback?next=/auth/set-password`;
     const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, { redirectTo });
 
     let authUserId: string | null = invited?.user?.id ?? null;
