@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getSupabaseServer } from "@/lib/supabase-server";
 
-const CLIENTE_ID = process.env.NEXT_PUBLIC_CLIENTE_ID!;
 const ROLES_VALIDOS = ["admin", "vendedor", "empacador"];
 
 export async function POST(req: NextRequest) {
-  const { email, nombre, rol } = await req.json().catch(() => ({}));
+  const { email, nombre, rol, cliente_id: clienteIdSolicitado } = await req.json().catch(() => ({}));
   if (!email || !nombre || !ROLES_VALIDOS.includes(rol)) {
     return NextResponse.json({ error: "Datos invalidos" }, { status: 400 });
   }
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { data: caller, error: callerError } = await supabaseAdmin
     .from("usuarios_roles")
-    .select("rol, activo")
+    .select("rol, activo, cliente_id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
   if (callerError) {
@@ -33,6 +32,23 @@ export async function POST(req: NextRequest) {
   }
   if (!caller || !caller.activo || !["admin", "super_admin"].includes(caller.rol as string)) {
     return NextResponse.json({ error: "No tienes permisos para invitar usuarios" }, { status: 403 });
+  }
+
+  // Un admin normal solo puede invitar dentro de su propio cliente: se
+  // ignora cualquier cliente_id que venga del body. Un super_admin en modo
+  // soporte (vista desarrollador) puede invitar al cliente que este viendo,
+  // pero se valida que ese cliente exista antes de usarlo.
+  let clienteId = caller.cliente_id as string;
+  if (caller.rol === "super_admin" && clienteIdSolicitado) {
+    const { data: clienteValido } = await supabaseAdmin
+      .from("clientes")
+      .select("id")
+      .eq("id", clienteIdSolicitado)
+      .maybeSingle();
+    if (!clienteValido) {
+      return NextResponse.json({ error: "Cliente invalido" }, { status: 400 });
+    }
+    clienteId = clienteIdSolicitado;
   }
 
   try {
@@ -60,13 +76,13 @@ export async function POST(req: NextRequest) {
     if (filaExistente) {
       const { error: updateError } = await supabaseAdmin
         .from("usuarios_roles")
-        .update({ auth_user_id: authUserId, cliente_id: CLIENTE_ID, rol, nombre, activo: true })
+        .update({ auth_user_id: authUserId, cliente_id: clienteId, rol, nombre, activo: true })
         .eq("id", filaExistente.id);
       if (updateError) throw updateError;
     } else {
       const { error: insertError } = await supabaseAdmin
         .from("usuarios_roles")
-        .insert({ auth_user_id: authUserId, cliente_id: CLIENTE_ID, rol, nombre, email, activo: true });
+        .insert({ auth_user_id: authUserId, cliente_id: clienteId, rol, nombre, email, activo: true });
       if (insertError) throw insertError;
     }
 
