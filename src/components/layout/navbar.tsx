@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut } from "lucide-react";
+import { Zap, LogOut, ChevronDown } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useState, useRef, useEffect } from "react";
 
 const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   admin: [
@@ -26,6 +27,7 @@ const ROL_COLORS: Record<RolUsuario, string> = {
   vendedor: "bg-emerald-400",
   empacador: "bg-sky-400",
 };
+const VISTAS: RolUsuario[] = ["admin", "vendedor", "empacador"];
 
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean);
@@ -36,7 +38,17 @@ function iniciales(nombre: string): string {
 
 export function Navbar() {
   const pathname = usePathname();
-  const { rol, usuario, signOut } = useRole();
+  const { rol, usuario, esSuperAdmin, setVista, signOut } = useRole();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   if (!rol) {
     return (
@@ -56,6 +68,13 @@ export function Navbar() {
     );
   }
 
+  // Para super_admin, "Equipo" debe seguir accesible aunque este viendo la
+  // vista de vendedor/empacador (esas vistas no traen ese link).
+  const navItems =
+    esSuperAdmin && rol !== "admin"
+      ? [...NAV_ITEMS[rol], { label: "Equipo", href: "/admin/usuarios" }]
+      : NAV_ITEMS[rol];
+
   return (
     <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[hsl(230,15%,7%)]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
@@ -71,7 +90,7 @@ export function Navbar() {
 
         {/* Nav links */}
         <div className="flex items-center gap-1">
-          {NAV_ITEMS[rol].map((item) => {
+          {navItems.map((item) => {
             const active = pathname === item.href;
             return (
               <Link
@@ -95,10 +114,41 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70">
-            <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[rol])} />
-            {ROL_LABELS[rol]}
-          </span>
+          {esSuperAdmin ? (
+            <div ref={ref} className="relative">
+              <button
+                onClick={() => setOpen(!open)}
+                title="Como super_admin puedes ver cualquier vista para seguir probando el producto"
+                className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-amber-400/20 hover:bg-white/[0.06] hover:text-white/90"
+              >
+                <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[rol])} />
+                {ROL_LABELS[rol]}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+              </button>
+              {open && (
+                <div className="absolute right-0 top-full z-50 mt-2 min-w-[140px] overflow-hidden rounded-xl border border-white/[0.08] bg-[hsl(230,14%,11%)] p-1 shadow-2xl shadow-black/40 animate-in-soft">
+                  {VISTAS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => { setVista(r); setOpen(false); }}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                        rol === r ? "bg-amber-400/10 text-amber-400" : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[r])} />
+                      {ROL_LABELS[r]}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <span className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70">
+              <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[rol])} />
+              {ROL_LABELS[rol]}
+            </span>
+          )}
 
           <div className="hidden items-center gap-2 sm:flex">
             <span className="max-w-[120px] truncate text-xs text-white/40">{usuario?.nombre}</span>
