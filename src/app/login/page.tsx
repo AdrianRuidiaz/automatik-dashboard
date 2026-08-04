@@ -73,11 +73,18 @@ export default function LoginPage() {
   // Reutiliza /auth/set-password como pantalla de destino: es el mismo
   // mecanismo que usan los links de invitacion (Supabase crea una sesion
   // temporal a partir del token del link y ahi se define la contraseña).
+  //
+  // El redirectTo pasa por /auth/callback en vez de ir directo a
+  // set-password: el cliente de Supabase (@supabase/ssr) usa flujo PKCE por
+  // defecto, asi que el link del correo trae "?code=..." y hace falta
+  // intercambiarlo por una sesion real (exchangeCodeForSession) antes de
+  // que set-password pueda ver una sesion con getSession(). Sin este paso
+  // la pagina se quedaba pegada para siempre en "Verificando invitacion...".
   const handleOlvide = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true); setError(null);
     try {
-      const redirectTo = `${window.location.origin}/auth/set-password`;
+      const redirectTo = `${window.location.origin}/auth/callback?next=/auth/set-password`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (resetError) throw resetError;
       setModo("enviado");
