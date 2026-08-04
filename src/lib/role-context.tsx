@@ -1,40 +1,96 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import type { RolUsuario } from "@/lib/types";
 
-const STORAGE_KEY = "automatik:rol";
+interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+}
 
 interface RoleContextValue {
-  rol: RolUsuario;
-  setRol: (r: RolUsuario) => void;
+  rol: RolUsuario | null;
+  usuario: Usuario | null;
   listo: boolean;
+  signOut: () => Promise<void>;
 }
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
-  const [rol, setRolState] = useState<RolUsuario>("admin");
+  const router = useRouter();
+  const [rol, setRol] = useState<RolUsuario | null>(null);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [listo, setListo] = useState(false);
 
-  // Restaurar el rol elegido al cargar
   useEffect(() => {
-    try {
-      const guardado = window.localStorage.getItem(STORAGE_KEY);
-      if (guardado === "admin" || guardado === "vendedor" || guardado === "empacador") {
-        setRolState(guardado);
+    let activo = true;
+
+    async function cargarPerfil(userId: string, email: string) {
+      const { data } = await supabase
+        .from("usuarios_roles")
+        .select("rol, nombre, email")
+        .eq("auth_user_id", userId)
+        .eq("activo", true)
+        .maybeSingle();
+
+      if (!activo) return;
+
+      if (!data) {
+        setRol(null);
+        setUsuario(null);
+        setListo(true);
+        return;
       }
-    } catch {}
-    setListo(true);
+
+      // super_admin usa la misma UI que admin; el permiso extra vive en el rol real.
+      const rolNormalizado = data.rol === "super_admin" ? "admin" : (data.rol as RolUsuario);
+      setRol(rolNormalizado);
+      setUsuario({ id: userId, nombre: data.nombre || email, email: data.email || email });
+      setListo(true);
+    }
+
+    supabase.auth.getUser().then(({ data }) => {
+      if (!activo) return;
+      if (data.user) {
+        cargarPerfil(data.user.id, data.user.email || "");
+      } else {
+        setRol(null);
+        setUsuario(null);
+        setListo(true);
+      }
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!activo) return;
+      if (session?.user) {
+        cargarPerfil(session.user.id, session.user.email || "");
+      } else {
+        setRol(null);
+        setUsuario(null);
+        setListo(true);
+      }
+    });
+
+    return () => {
+      activo = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
-  const setRol = (r: RolUsuario) => {
-    setRolState(r);
-    try { window.localStorage.setItem(STORAGE_KEY, r); } catch {}
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setRol(null);
+    setUsuario(null);
+    router.push("/login");
+    router.refresh();
   };
 
   return (
-    <RoleContext.Provider value={{ rol, setRol, listo }}>
+    <RoleContext.Provider value={{ rol, usuario, listo, signOut }}>
       {children}
     </RoleContext.Provider>
   );
