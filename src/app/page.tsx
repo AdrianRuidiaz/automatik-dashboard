@@ -10,6 +10,7 @@ import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { ManualOrderForm } from "@/components/vendedor/manual-order-form";
 import { supabase } from "@/lib/supabase";
 import { fetchPedidos, fetchDashboardResumen, fetchTendenciaDiaria } from "@/lib/api";
+import { useRole } from "@/lib/role-context";
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 export default function HomePage() {
+  const { clienteId } = useRole();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
   const [tendencia, setTendencia] = useState<TendenciaDiaria[]>([]);
@@ -28,13 +30,18 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [busqueda, setBusqueda] = useState("");
   const loadData = useCallback(async () => {
+    if (!clienteId) return;
     setRefreshing(true);
     try {
-      const [p, r, t] = await Promise.all([fetchPedidos(), fetchDashboardResumen(), fetchTendenciaDiaria(7)]);
+      const [p, r, t] = await Promise.all([
+        fetchPedidos(clienteId),
+        fetchDashboardResumen(clienteId),
+        fetchTendenciaDiaria(clienteId, 7),
+      ]);
       setPedidos(p); setResumen(r); setTendencia(t); setLastUpdate(new Date());
     } catch (err) { console.error("Error cargando datos:", err); }
     finally { setRefreshing(false); }
-  }, []);
+  }, [clienteId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
