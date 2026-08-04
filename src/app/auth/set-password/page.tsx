@@ -8,16 +8,50 @@ import { Loader2 } from "lucide-react";
 export default function SetPasswordPage() {
   const router = useRouter();
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // El link de invitacion trae la sesion en el hash de la URL; el cliente
-    // de Supabase la detecta y crea la sesion automaticamente al cargar.
+    // El redirect ya paso por /auth/callback, que intercambia el "?code="
+    // del link (flujo PKCE) por una sesion real antes de llegar aca -- por
+    // eso alcanza con getSession(). Igual se cubre con onAuthStateChange
+    // por si la sesion (cookies) tarda un tick en estar lista, y con un
+    // timeout + chequeo de errores en la URL para no quedar pegado en
+    // "Verificando invitacion..." para siempre si el link ya se uso o vencio.
+    let activo = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const errorDesc = params.get("error_description") || hashParams.get("error_description");
+    if (errorDesc) {
+      setLinkError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
+      return;
+    }
+
     supabase.auth.getSession().then(({ data }) => {
-      setReady(Boolean(data.session));
+      if (activo && data.session) setReady(true);
     });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (activo && session) setReady(true);
+    });
+
+    const timeout = setTimeout(() => {
+      if (activo) {
+        setReady((yaListo) => {
+          if (!yaListo) setLinkError("El link no es válido o ya venció.");
+          return yaListo;
+        });
+      }
+    }, 8000);
+
+    return () => {
+      activo = false;
+      sub.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,7 +74,16 @@ export default function SetPasswordPage() {
       <div className="card-premium w-full max-w-sm p-6">
         <h1 className="mb-1 text-lg font-medium">Crea tu contraseña</h1>
         <p className="mb-5 text-sm text-muted-foreground">Ya fuiste invitado al panel. Define una contraseña para tu cuenta.</p>
-        {!ready ? (
+        {linkError ? (
+          <div className="space-y-3">
+            <p className="text-sm text-red-500">{linkError}</p>
+            <p className="text-xs text-muted-foreground">Pide que te reenvíen la invitación o el link de recuperación.</p>
+            <button onClick={() => router.push("/login")}
+              className="w-full rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
+              Volver a iniciar sesión
+            </button>
+          </div>
+        ) : !ready ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Verificando invitación...
           </div>
