@@ -55,9 +55,12 @@ async function resolverObjetivo(
 }
 
 export async function PATCH(req: NextRequest) {
-  const { usuario_id, rol } = await req.json().catch(() => ({}));
-  if (!usuario_id || !ROLES_VALIDOS.includes(rol)) {
+  const { usuario_id, rol, activo } = await req.json().catch(() => ({}));
+  if (!usuario_id || (rol === undefined && activo === undefined)) {
     return NextResponse.json({ error: "Datos invalidos" }, { status: 400 });
+  }
+  if (rol !== undefined && !ROLES_VALIDOS.includes(rol)) {
+    return NextResponse.json({ error: "Rol invalido" }, { status: 400 });
   }
 
   const check = await verificarCaller();
@@ -67,13 +70,17 @@ export async function PATCH(req: NextRequest) {
   const objetivoCheck = await resolverObjetivo(supabaseAdmin, caller as any, usuario_id);
   if ("error" in objetivoCheck) return objetivoCheck.error;
 
+  const cambios: Record<string, unknown> = {};
+  if (rol !== undefined) cambios.rol = rol;
+  if (activo !== undefined) cambios.activo = Boolean(activo);
+
   const { error: updateError } = await supabaseAdmin
     .from("usuarios_roles")
-    .update({ rol })
+    .update(cambios)
     .eq("id", usuario_id);
   if (updateError) {
-    console.error("actualizar rol:", updateError);
-    return NextResponse.json({ error: "No se pudo actualizar el rol" }, { status: 500 });
+    console.error("actualizar usuario:", updateError);
+    return NextResponse.json({ error: "No se pudo actualizar al usuario" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
