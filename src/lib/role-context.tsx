@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { RolUsuario } from "@/lib/types";
 
@@ -46,6 +46,7 @@ const RoleContext = createContext<RoleContextValue | null>(null);
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [rolReal, setRolReal] = useState<string | null>(null);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [clientePropioId, setClientePropioId] = useState<string | null>(null);
@@ -55,6 +56,12 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   // Modo soporte (solo super_admin): a que cliente se esta viendo/ayudando.
   const [clienteActivoId, setClienteActivoId] = useState<string | null>(null);
   const [clientesDisponibles, setClientesDisponibles] = useState<ClienteOption[]>([]);
+
+  // /login y /auth/* son publicas y no usan useRole() -- no tiene sentido
+  // pedir rol/cliente ahi. Antes esas paginas competian por ancho de banda
+  // con las consultas de auth/rol/clientes de fondo, lo que se sentia como
+  // demora para cargar los links de crear/recuperar contraseña en movil.
+  const esPublica = pathname === "/login" || pathname.startsWith("/auth");
 
   // Restaurar la vista elegida por el super_admin (solo afecta a super_admin).
   useEffect(() => {
@@ -67,7 +74,13 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (esPublica) {
+      setListo(true);
+      return;
+    }
+
     let activo = true;
+    let ultimoUserId: string | null = null;
 
     async function cargarPerfil(userId: string, email: string) {
       const { data } = await supabase
@@ -112,23 +125,19 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       setListo(true);
     }
 
-    supabase.auth.getUser().then(({ data }) => {
-      if (!activo) return;
-      if (data.user) {
-        cargarPerfil(data.user.id, data.user.email || "");
-      } else {
-        setRolReal(null);
-        setUsuario(null);
-        setClientePropioId(null);
-        setListo(true);
-      }
-    });
-
+    // Un solo punto de entrada (onAuthStateChange, que se dispara de
+    // inmediato con la sesion actual al suscribirse) en vez de sumar un
+    // supabase.auth.getUser() aparte -- antes se disparaban dos fetches de
+    // usuarios_roles (y clientes) en cada carga de pagina, duplicando
+    // round-trips innecesarios, mas notorio en redes moviles.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!activo) return;
       if (session?.user) {
+        if (session.user.id === ultimoUserId) return;
+        ultimoUserId = session.user.id;
         cargarPerfil(session.user.id, session.user.email || "");
       } else {
+        ultimoUserId = null;
         setRolReal(null);
         setUsuario(null);
         setClientePropioId(null);
@@ -140,7 +149,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       activo = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [esPublica]);
 
   const esSuperAdmin = rolReal === "super_admin";
 
