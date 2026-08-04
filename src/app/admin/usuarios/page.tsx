@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { Loader2, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
+import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 
 interface UsuarioRol {
@@ -18,6 +19,7 @@ interface UsuarioRol {
 const ROLES_INVITABLES: RolUsuario[] = ["admin", "vendedor", "empacador"];
 
 export default function UsuariosPage() {
+  const { clienteId, clienteNombre, esSuperAdmin } = useRole();
   const [usuarios, setUsuarios] = useState<UsuarioRol[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -28,25 +30,28 @@ export default function UsuariosPage() {
   const [mensaje, setMensaje] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null);
 
   const cargar = useCallback(async () => {
+    if (!clienteId) return;
     setCargando(true);
     const { data } = await supabase
       .from("usuarios_roles")
       .select("id, nombre, email, rol, activo, created_at")
+      .eq("cliente_id", clienteId)
       .order("created_at", { ascending: false });
     setUsuarios((data as UsuarioRol[]) || []);
     setCargando(false);
-  }, []);
+  }, [clienteId]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
   const handleInvitar = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!clienteId) return;
     setEnviando(true); setMensaje(null);
     try {
       const res = await fetch("/api/admin/invitar-usuario", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, email, rol }),
+        body: JSON.stringify({ nombre, email, rol, cliente_id: clienteId }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || "No se pudo enviar la invitación");
@@ -65,7 +70,10 @@ export default function UsuariosPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-medium">Equipo</h1>
-          <p className="text-sm text-muted-foreground">Invita y administra quién tiene acceso al panel.</p>
+          <p className="text-sm text-muted-foreground">
+            Invita y administra quién tiene acceso al panel
+            {esSuperAdmin && clienteNombre ? <> — <span className="font-medium text-foreground">{clienteNombre}</span></> : "."}
+          </p>
         </div>
 
         <form onSubmit={handleInvitar} className="card-premium flex flex-wrap items-end gap-3 p-4">
@@ -86,7 +94,7 @@ export default function UsuariosPage() {
               {ROLES_INVITABLES.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
-          <button disabled={enviando} type="submit"
+          <button disabled={enviando || !clienteId} type="submit"
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
             {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
             Invitar
