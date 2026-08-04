@@ -24,6 +24,7 @@ export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<UsuarioRol[]>([]);
   const [cargando, setCargando] = useState(true);
   const [idEnProceso, setIdEnProceso] = useState<string | null>(null);
+  const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
 
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -87,7 +88,7 @@ export default function UsuariosPage() {
   };
 
   const handleEliminar = async (u: UsuarioRol) => {
-    if (!window.confirm(`¿Quitar a ${u.nombre} (${u.email}) del equipo? Pierde acceso al panel de inmediato.`)) return;
+    setConfirmandoId(null);
     setIdEnProceso(u.id); setMensaje(null);
     try {
       const res = await fetch("/api/admin/usuario", {
@@ -213,9 +214,25 @@ export default function UsuariosPage() {
                         <span className="text-xs text-muted-foreground">—</span>
                       ) : procesando ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      ) : confirmandoId === u.id ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">¿Seguro?</span>
+                          <button
+                            onClick={() => handleEliminar(u)}
+                            className="rounded-lg border border-red-400/40 px-2.5 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-400/10"
+                          >
+                            Sí, eliminar
+                          </button>
+                          <button
+                            onClick={() => setConfirmandoId(null)}
+                            className="rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       ) : u.activo ? (
                         <button
-                          onClick={() => handleEliminar(u)}
+                          onClick={() => setConfirmandoId(u.id)}
                           title="Quitar del equipo"
                           className="flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-400"
                         >
