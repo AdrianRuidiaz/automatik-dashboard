@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut, ChevronDown } from "lucide-react";
+import { Zap, LogOut, ChevronDown, Building2 } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,56 @@ function iniciales(nombre: string): string {
   if (partes.length === 0) return "?";
   if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
   return (partes[0][0] + partes[1][0]).toUpperCase();
+}
+
+// Selector de cliente para el modo "vista desarrollador": le permite al
+// super_admin elegir a que cliente esta dando soporte. No cambia el rol que
+// esta viendo (eso lo maneja el selector de vista existente), solo que
+// cliente_id se usa para todas las consultas de datos.
+function ClienteSwitcher() {
+  const { clienteNombre, clientesDisponibles, clienteId, setCliente } = useRole();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  if (clientesDisponibles.length === 0) return null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        title="Vista desarrollador: elige a que cliente le estas dando soporte"
+        className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70 transition-all hover:border-amber-400/20 hover:bg-white/[0.06] hover:text-white/90"
+      >
+        <Building2 className="h-3.5 w-3.5" />
+        <span className="max-w-[120px] truncate">{clienteNombre || "Elegir cliente"}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 min-w-[200px] overflow-hidden rounded-xl border border-white/[0.08] bg-[hsl(230,14%,11%)] p-1 shadow-2xl shadow-black/40 animate-in-soft">
+          {clientesDisponibles.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => { setCliente(c.id); setOpen(false); }}
+              className={cn(
+                "flex w-full items-center gap-2 truncate rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                clienteId === c.id ? "bg-amber-400/10 text-amber-400" : "text-white/60 hover:bg-white/[0.04] hover:text-white/90"
+              )}
+            >
+              {c.nombre}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Navbar() {
@@ -114,6 +164,8 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          {esSuperAdmin && <ClienteSwitcher />}
+
           {esSuperAdmin ? (
             <div ref={ref} className="relative">
               <button
