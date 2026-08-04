@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { TrendChart } from "@/components/dashboard/trend-chart";
@@ -50,12 +50,25 @@ export default function HomePage() {
   // periodica de n8n) recarga todo para todos los usuarios conectados, sin
   // importar a que cliente pertenecen -- eso se sentia como carga lenta o
   // que la pagina "nunca termina", sobre todo en redes moviles.
+  //
+  // Ademas, aunque el cambio sea del cliente correcto, procesos por lotes
+  // (ej. migracion de etiquetas) pueden actualizar muchos pedidos seguidos
+  // en pocos segundos -- cada UPDATE dispara el callback y sin proteccion
+  // se hacen N recargas completas en cadena. Se agrupan con un debounce:
+  // solo se recarga una vez, 800ms despues del ultimo cambio detectado.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!clienteId) return;
     const ch = supabase.channel("pedidos-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => loadData(), 800);
+      })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(ch);
+    };
   }, [loadData, clienteId]);
 
   const pendientes = useMemo(
