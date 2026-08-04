@@ -55,12 +55,9 @@ async function resolverObjetivo(
 }
 
 export async function PATCH(req: NextRequest) {
-  const { usuario_id, rol, activo } = await req.json().catch(() => ({}));
-  if (!usuario_id || (rol === undefined && activo === undefined)) {
+  const { usuario_id, rol } = await req.json().catch(() => ({}));
+  if (!usuario_id || !ROLES_VALIDOS.includes(rol)) {
     return NextResponse.json({ error: "Datos invalidos" }, { status: 400 });
-  }
-  if (rol !== undefined && !ROLES_VALIDOS.includes(rol)) {
-    return NextResponse.json({ error: "Rol invalido" }, { status: 400 });
   }
 
   const check = await verificarCaller();
@@ -70,17 +67,13 @@ export async function PATCH(req: NextRequest) {
   const objetivoCheck = await resolverObjetivo(supabaseAdmin, caller as any, usuario_id);
   if ("error" in objetivoCheck) return objetivoCheck.error;
 
-  const cambios: Record<string, unknown> = {};
-  if (rol !== undefined) cambios.rol = rol;
-  if (activo !== undefined) cambios.activo = Boolean(activo);
-
   const { error: updateError } = await supabaseAdmin
     .from("usuarios_roles")
-    .update(cambios)
+    .update({ rol })
     .eq("id", usuario_id);
   if (updateError) {
-    console.error("actualizar usuario:", updateError);
-    return NextResponse.json({ error: "No se pudo actualizar al usuario" }, { status: 500 });
+    console.error("actualizar rol:", updateError);
+    return NextResponse.json({ error: "No se pudo actualizar el rol" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
@@ -99,12 +92,22 @@ export async function DELETE(req: NextRequest) {
   const objetivoCheck = await resolverObjetivo(supabaseAdmin, caller as any, usuario_id);
   if ("error" in objetivoCheck) return objetivoCheck.error;
 
-  // Baja logica (activo = false) en vez de borrar la fila: revoca el
-  // acceso al instante (todas las policies de RLS filtran por activo=true)
-  // sin perder el historial ni romper referencias de otras tablas.
+  // Se borra la fila de verdad (no baja logica). archivos.subido_por
+  // apunta a usuarios_roles sin ON DELETE CASCADE/SET NULL, asi que primero
+  // se desvincula (queda en null) para no romper el borrado ni perder los
+  // archivos ya subidos por esta persona.
+  const { error: nullifyError } = await supabaseAdmin
+    .from("archivos")
+    .update({ subido_por: null })
+    .eq("subido_por", usuario_id);
+  if (nullifyError) {
+    console.error("desvincular archivos antes de eliminar:", nullifyError);
+    return NextResponse.json({ error: "No se pudo eliminar al usuario" }, { status: 500 });
+  }
+
   const { error: deleteError } = await supabaseAdmin
     .from("usuarios_roles")
-    .update({ activo: false })
+    .delete()
     .eq("id", usuario_id);
   if (deleteError) {
     console.error("eliminar usuario:", deleteError);
