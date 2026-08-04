@@ -10,6 +10,7 @@ import {
   uploadArchivo,
   registrarArchivo,
 } from "@/lib/api";
+import { useRole } from "@/lib/role-context";
 import type { Plataforma, PedidoItem } from "@/lib/types";
 
 type Step = "identify" | "verify" | "confirm";
@@ -25,6 +26,7 @@ interface ApiResult {
 }
 
 export function ManualOrderForm() {
+  const { clienteId } = useRole();
   const [step, setStep] = useState<Step>("identify");
   const [orderNumber, setOrderNumber] = useState("");
   const [plataforma, setPlataforma] = useState<Plataforma>("ML");
@@ -43,12 +45,12 @@ export function ManualOrderForm() {
   // gastar una consulta a Mercado Libre/Falabella y sin perder lo que el
   // vendedor ya escribió en el formulario.
   const handleSearch = async () => {
-    if (!orderNumber.trim()) return;
+    if (!orderNumber.trim() || !clienteId) return;
     setLoading(true);
     setError(null);
     setDuplicado(false);
     try {
-      const existente = await existePedidoDuplicado(orderNumber.trim());
+      const existente = await existePedidoDuplicado(orderNumber.trim(), clienteId);
       if (existente) {
         setDuplicado(true);
         setError("Este pedido ya existe en el sistema.");
@@ -77,7 +79,7 @@ export function ManualOrderForm() {
   // ningún registro a medias y el vendedor puede reintentar sin duplicar
   // nada (upsert_pedido es idempotente por id_plataforma).
   const handleConfirm = async () => {
-    if (!apiResult) return;
+    if (!apiResult || !clienteId) return;
     setSaving(true);
     setError(null);
     try {
@@ -100,7 +102,7 @@ export function ManualOrderForm() {
       }
 
       const resultado = await upsertPedido({
-        p_cliente_id: process.env.NEXT_PUBLIC_CLIENTE_ID!,
+        p_cliente_id: clienteId,
         p_plataforma: plataforma === "ML" ? "ML" : "Falabella",
         p_id_plataforma: orderNumber,
         p_order_id: apiResult.order_id,
@@ -270,7 +272,7 @@ export function ManualOrderForm() {
           <div className="flex justify-end">
             <button
               onClick={handleSearch}
-              disabled={!orderNumber.trim() || loading}
+              disabled={!orderNumber.trim() || loading || !clienteId}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50"
             >
               {loading ? (
@@ -376,7 +378,7 @@ export function ManualOrderForm() {
             </button>
             <button
               onClick={handleConfirm}
-              disabled={saving}
+              disabled={saving || !clienteId}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 disabled:opacity-50"
             >
               {saving ? (
