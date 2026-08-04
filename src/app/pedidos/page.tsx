@@ -24,13 +24,18 @@ export default function PedidosPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // NOTA: filtrar por cliente_id es obligatorio aca -- sin el filtro,
+  // cualquier cambio en pedidos de OTRO cliente recargaba esta tabla para
+  // todos los usuarios conectados (se sentia como carga lenta/constante,
+  // sobre todo en movil).
   useEffect(() => {
+    if (!clienteId) return;
     const ch = supabase
       .channel("pedidos-table-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [loadData]);
+  }, [loadData, clienteId]);
 
   const pendientes = pedidos.filter((p) =>
     ["pending", "paid", "ready_to_ship"].includes(p.estado)
