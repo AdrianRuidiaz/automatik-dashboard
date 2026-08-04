@@ -8,13 +8,18 @@ import type {
     TipoArchivo,
 } from "./types";
 
-const CLIENTE_ID = process.env.NEXT_PUBLIC_CLIENTE_ID!;
+// NOTA: antes este archivo usaba un NEXT_PUBLIC_CLIENTE_ID fijo, hardcodeado
+// a nivel de build. Eso hacia imposible que un mismo despliegue sirva a mas
+// de un cliente (necesario para la "vista desarrollador"/soporte de
+// super_admin y, a futuro, para vender esto como servicio multi-cliente).
+// Ahora cada funcion recibe el cliente_id como parametro: quien lo resuelve
+// es role-context (propio para roles normales, elegible para super_admin).
 
-export async function fetchPedidos(): Promise<Pedido[]> {
+export async function fetchPedidos(clienteId: string): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from("pedidos")
       .select("*")
-      .eq("cliente_id", CLIENTE_ID)
+      .eq("cliente_id", clienteId)
       .order("fecha_pedido", { ascending: false });
     if (error) throw error;
     return data ?? [];
@@ -31,13 +36,14 @@ export async function fetchPedido(id: string): Promise<Pedido | null> {
 }
 
 export async function fetchPedidoByPlataforma(
-    idPlataforma: string
+    idPlataforma: string,
+    clienteId: string
   ): Promise<Pedido | null> {
     const { data, error } = await supabase
       .from("pedidos")
       .select("*")
       .eq("id_plataforma", idPlataforma)
-      .eq("cliente_id", CLIENTE_ID)
+      .eq("cliente_id", clienteId)
       .maybeSingle();
     if (error) throw error;
     return data;
@@ -48,22 +54,23 @@ export async function fetchPedidoByPlataforma(
 // clara en el punto de uso (manual-order-form.tsx) y para poder ampliar la
 // regla de duplicado a futuro (ej. considerar tambien la plataforma) sin
 // tocar el resto del codigo que ya depende de fetchPedidoByPlataforma.
-export async function existePedidoDuplicado(idPlataforma: string): Promise<Pedido | null> {
+export async function existePedidoDuplicado(idPlataforma: string, clienteId: string): Promise<Pedido | null> {
     if (!idPlataforma.trim()) return null;
-    return fetchPedidoByPlataforma(idPlataforma.trim());
+    return fetchPedidoByPlataforma(idPlataforma.trim(), clienteId);
 }
 
-export async function fetchDashboardResumen(): Promise<DashboardResumen | null> {
+export async function fetchDashboardResumen(clienteId: string): Promise<DashboardResumen | null> {
     const { data, error } = await supabase
       .from("v_dashboard_resumen")
       .select("*")
-      .eq("cliente_id", CLIENTE_ID)
+      .eq("cliente_id", clienteId)
       .maybeSingle();
     if (error) throw error;
     return data;
 }
 
 export async function fetchTendenciaDiaria(
+    clienteId: string,
     dias = 7
   ): Promise<TendenciaDiaria[]> {
     const desde = new Date();
@@ -71,7 +78,7 @@ export async function fetchTendenciaDiaria(
     const { data, error } = await supabase
       .from("v_tendencia_diaria")
       .select("*")
-      .eq("cliente_id", CLIENTE_ID)
+      .eq("cliente_id", clienteId)
       .gte("fecha", desde.toISOString().slice(0, 10))
       .order("fecha", { ascending: true });
     if (error) throw error;
