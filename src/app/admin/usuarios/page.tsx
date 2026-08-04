@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Trash2, RotateCcw } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
@@ -14,14 +14,16 @@ interface UsuarioRol {
   rol: string;
   activo: boolean;
   created_at: string;
+  auth_user_id: string | null;
 }
 
 const ROLES_INVITABLES: RolUsuario[] = ["admin", "vendedor", "empacador"];
 
 export default function UsuariosPage() {
-  const { clienteId, clienteNombre, esSuperAdmin } = useRole();
+  const { clienteId, clienteNombre, esSuperAdmin, usuario } = useRole();
   const [usuarios, setUsuarios] = useState<UsuarioRol[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [idEnProceso, setIdEnProceso] = useState<string | null>(null);
 
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
@@ -34,7 +36,7 @@ export default function UsuariosPage() {
     setCargando(true);
     const { data } = await supabase
       .from("usuarios_roles")
-      .select("id, nombre, email, rol, activo, created_at")
+      .select("id, nombre, email, rol, activo, created_at, auth_user_id")
       .eq("cliente_id", clienteId)
       .order("created_at", { ascending: false });
     setUsuarios((data as UsuarioRol[]) || []);
@@ -62,6 +64,62 @@ export default function UsuariosPage() {
       setMensaje({ tipo: "error", texto: err instanceof Error ? err.message : "Error inesperado" });
     } finally {
       setEnviando(false);
+    }
+  };
+
+  const handleCambiarRol = async (u: UsuarioRol, nuevoRol: string) => {
+    if (nuevoRol === u.rol) return;
+    setIdEnProceso(u.id); setMensaje(null);
+    try {
+      const res = await fetch("/api/admin/usuario", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario_id: u.id, rol: nuevoRol }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "No se pudo cambiar el rol");
+      setUsuarios((prev) => prev.map((x) => (x.id === u.id ? { ...x, rol: nuevoRol } : x)));
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: err instanceof Error ? err.message : "Error inesperado" });
+    } finally {
+      setIdEnProceso(null);
+    }
+  };
+
+  const handleEliminar = async (u: UsuarioRol) => {
+    if (!window.confirm(`¿Quitar a ${u.nombre} (${u.email}) del equipo? Pierde acceso al panel de inmediato.`)) return;
+    setIdEnProceso(u.id); setMensaje(null);
+    try {
+      const res = await fetch("/api/admin/usuario", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario_id: u.id }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "No se pudo eliminar al usuario");
+      setUsuarios((prev) => prev.map((x) => (x.id === u.id ? { ...x, activo: false } : x)));
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: err instanceof Error ? err.message : "Error inesperado" });
+    } finally {
+      setIdEnProceso(null);
+    }
+  };
+
+  const handleReactivar = async (u: UsuarioRol) => {
+    setIdEnProceso(u.id); setMensaje(null);
+    try {
+      const res = await fetch("/api/admin/usuario", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ usuario_id: u.id, activo: true }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || "No se pudo reactivar al usuario");
+      setUsuarios((prev) => prev.map((x) => (x.id === u.id ? { ...x, activo: true } : x)));
+    } catch (err) {
+      setMensaje({ tipo: "error", texto: err instanceof Error ? err.message : "Error inesperado" });
+    } finally {
+      setIdEnProceso(null);
     }
   };
 
@@ -113,27 +171,69 @@ export default function UsuariosPage() {
                 <th className="px-4 py-3 font-medium">Correo</th>
                 <th className="px-4 py-3 font-medium">Rol</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {cargando ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
                   <Loader2 className="mx-auto h-4 w-4 animate-spin" />
                 </td></tr>
               ) : usuarios.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Sin usuarios aún</td></tr>
-              ) : usuarios.map((u) => (
-                <tr key={u.id} className="border-b border-white/[0.04] last:border-0">
-                  <td className="px-4 py-3">{u.nombre}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
-                  <td className="px-4 py-3 capitalize">{u.rol.replace("_", " ")}</td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-xs ${u.activo ? "bg-emerald-400/10 text-emerald-400" : "bg-white/[0.06] text-muted-foreground"}`}>
-                      {u.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Sin usuarios aún</td></tr>
+              ) : usuarios.map((u) => {
+                const esUnoMismo = u.auth_user_id !== null && u.auth_user_id === usuario?.id;
+                const gestionable = !esUnoMismo && u.rol !== "super_admin";
+                const procesando = idEnProceso === u.id;
+                return (
+                  <tr key={u.id} className="border-b border-white/[0.04] last:border-0">
+                    <td className="px-4 py-3">{u.nombre}{esUnoMismo && <span className="ml-1.5 text-xs text-muted-foreground">(tú)</span>}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
+                    <td className="px-4 py-3">
+                      {gestionable && u.activo ? (
+                        <select
+                          value={u.rol}
+                          disabled={procesando}
+                          onChange={(e) => handleCambiarRol(u, e.target.value)}
+                          className="rounded-lg border border-input bg-card px-2 py-1 text-xs capitalize outline-none focus:border-primary disabled:opacity-60"
+                        >
+                          {ROLES_INVITABLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                      ) : (
+                        <span className="capitalize">{u.rol.replace("_", " ")}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${u.activo ? "bg-emerald-400/10 text-emerald-400" : "bg-white/[0.06] text-muted-foreground"}`}>
+                        {u.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {!gestionable ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : procesando ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      ) : u.activo ? (
+                        <button
+                          onClick={() => handleEliminar(u)}
+                          title="Quitar del equipo"
+                          className="flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-red-400/40 hover:text-red-400"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Eliminar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleReactivar(u)}
+                          title="Reactivar acceso"
+                          className="flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" /> Reactivar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
