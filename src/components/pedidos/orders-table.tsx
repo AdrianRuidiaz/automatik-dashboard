@@ -9,12 +9,45 @@ import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Pac
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos, cancelarPedido } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 interface OrdersTableProps { pedidos: Pedido[]; }
+
+// Exporta la lista de pedidos que se le pase (ya filtrada/buscada por la
+// tabla) a un CSV descargable. Todo se genera en el navegador, no pega a
+// ningun backend.
+function exportarPedidosCSV(pedidos: Pedido[]) {
+  const headers = ["N° pedido", "Plataforma", "Fecha", "Cliente", "Total", "Estado", "Items", "Etiqueta"];
+
+  const escape = (valor: unknown) => `"${String(valor ?? "").replace(/"/g, '""')}"`;
+
+  const filas = pedidos.map((p) => [
+    p.id_plataforma,
+    p.plataforma,
+    p.fecha_pedido ? formatFechaCorta(p.fecha_pedido) : "",
+    p.cliente_nombre ?? "",
+    p.total_pagado,
+    ESTADO_LABELS[p.estado] ?? p.estado,
+    (p.items ?? []).map((i) => `${i.quantity}x ${i.title}`).join(" | "),
+    p.etiqueta_url ? "Si" : "No",
+  ]);
+
+  const csv = [headers, ...filas].map((fila) => fila.map(escape).join(",")).join("\r\n");
+  // BOM para que Excel detecte UTF-8 y no rompa tildes/ñ.
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `pedidos_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
 
 function OrderDetail({ pedido }: { pedido: Pedido }) {
   const [archivos, setArchivos] = useState<Archivo[]>([]);
@@ -322,7 +355,12 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
             <X className="h-3 w-3" /> Limpiar
           </button>
         )}
-        <button className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0">
+        <button
+          onClick={() => exportarPedidosCSV(filtered)}
+          disabled={filtered.length === 0}
+          title={filtered.length === 0 ? "No hay pedidos para exportar" : `Exportar ${filtered.length} pedido${filtered.length === 1 ? "" : "s"} a CSV`}
+          className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-40 disabled:hover:text-muted-foreground"
+        >
           <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
         </button>
       </div>
