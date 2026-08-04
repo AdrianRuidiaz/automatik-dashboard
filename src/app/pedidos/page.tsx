@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { OrdersTable } from "@/components/pedidos/orders-table";
 import { PackingCard } from "@/components/empacador/packing-card";
@@ -28,13 +28,26 @@ export default function PedidosPage() {
   // cualquier cambio en pedidos de OTRO cliente recargaba esta tabla para
   // todos los usuarios conectados (se sentia como carga lenta/constante,
   // sobre todo en movil).
+  //
+  // Ademas, aunque el cambio sea del cliente correcto, procesos por lotes
+  // (ej. migracion de etiquetas) pueden actualizar muchos pedidos seguidos
+  // en pocos segundos -- cada UPDATE dispara el callback y sin proteccion
+  // se hacen N recargas completas en cadena. Se agrupan con un debounce:
+  // solo se recarga una vez, 800ms despues del ultimo cambio detectado.
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!clienteId) return;
     const ch = supabase
       .channel("pedidos-table-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => loadData(), 800);
+      })
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      supabase.removeChannel(ch);
+    };
   }, [loadData, clienteId]);
 
   const pendientes = pedidos.filter((p) =>
