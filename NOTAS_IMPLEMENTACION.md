@@ -15,10 +15,11 @@
 
 La tabla `public.archivos` en Supabase nunca tuvo columna `storage_path` ni valores de `tipo` como `evidencia` o `documento_tributario` — eso solo existía en el código del frontend, por eso nunca se había guardado ninguna evidencia ni documento tributario en producción. Se corrigió el **frontend** para usar el esquema real (`url`, y los valores de `tipo` que ya acepta la base: `etiqueta, boleta, factura, nota_credito, guia_despacho, evidencia_empaque, otro`). No se tocó la base de datos ni los workflows de n8n que ya escriben en `archivos`, para no romper nada de lo que ya funciona.
 
-## Variables de entorno (ya configuradas en Vercel)
+## Variables de entorno
 
-- `SUPABASE_SERVICE_ROLE_KEY` — para la ruta `/api/pedidos/[id]/empacar`. **Nunca** debe llevar el prefijo `NEXT_PUBLIC_`.
+- `SUPABASE_SERVICE_ROLE_KEY` — usada por `supabase-admin.ts` (rutas `/api/pedidos/[id]/empacar`, `/api/admin/bootstrap-status`, `/api/admin/bootstrap`, `/api/admin/invitar-usuario`). **Nunca** debe llevar el prefijo `NEXT_PUBLIC_`. Si falta en el entorno de Vercel, `/login` no puede saber si falta crear el primer admin (falla cerrado a "no hace falta bootstrap" y el login normal no funciona porque no hay usuarios).
 - `N8N_WEBHOOK_VERIFY_PDF_URL` — URL del webhook de n8n "Verificar y Obtener Etiqueta PDF (Pedido Manual)".
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_CLIENTE_ID` — ya configuradas, usadas tanto en cliente como servidor.
 
 ## Webhook de n8n `verify-pdf` (ya implementado)
 
@@ -41,8 +42,11 @@ Este repo (Next.js) **solo escribe en Supabase**. La sincronización con Airtabl
 
 Para una consistencia real de punta a punta con Airtable (ej. rollback si Airtable falla después de guardar en Supabase) hay que tocar los workflows de n8n, no este repo.
 
-## Limitación importante: permisos por rol
+## Autenticación real (Supabase Auth + `usuarios_roles`)
 
-El selector de rol (Admin / Vendedor / Empacador) en la barra de navegación es **solo un valor en `localStorage`**, no hay sesión real de Supabase Auth todavía. Las políticas RLS de `pedidos` y `archivos` están escritas para depender de `auth.uid()`, que hoy siempre es `null` porque no hay login.
+Implementado: login con correo+contraseña o Google, sesión real (cookies vía `@supabase/ssr`), rutas protegidas por `middleware.ts`, rol derivado de la tabla `usuarios_roles` (ya no es un valor libre en `localStorage`).
 
-Por eso las validaciones nuevas de esta entrega (fotos de evidencia, duplicados, PDF) se hicieron a nivel de **datos** (contar archivos, buscar por `id_plataforma`, etc.) usando la service role key donde hacía falta, no a nivel de "solo el rol X puede hacer Y". Si más adelante quieres que los permisos por rol sean reales (que un vendedor no pueda, por ejemplo, marcar pedidos como empacados desde la consola del navegador), hay que implementar login con Supabase Auth y ligarlo a la tabla `usuarios_roles` que ya existe — es un proyecto aparte, pero puedo ayudarte con eso cuando quieras.
+- **Primer acceso**: `/login` detecta si `usuarios_roles` está vacía (`/api/admin/bootstrap-status`) y muestra un formulario para crear la primera cuenta, que queda como `super_admin` (`/api/admin/bootstrap`).
+- **Invitar equipo**: pantalla `/admin/usuarios`, solo visible/usable por `admin`/`super_admin`. Llama a `/api/admin/invitar-usuario`, que verifica el rol del que invita contra la base (no confía en lo que mande el cliente) y usa `supabaseAdmin.auth.admin.inviteUserByEmail`.
+- **Google OAuth**: requiere que el usuario configure un Client ID/Secret de Google Cloud y lo active en Supabase Auth → Providers → Google, además de agregar `/auth/callback` a las Redirect URLs permitidas. Sin eso, el botón de Google no funciona (el login con correo+contraseña sí).
+- **Pendiente, a propósito, hasta confirmación del usuario**: las políticas RLS `"anon lee pedidos"`, `"anon lee archivos"` y `"anon inserta archivos"` siguen activas y le dan a cualquiera (sin sesión) acceso de lectura/escritura vía la `anon key`. Mientras existan, el sistema de roles es cosmético a nivel de base de datos. Hay que eliminarlas una vez que se confirme que el login funciona bien en producción.
