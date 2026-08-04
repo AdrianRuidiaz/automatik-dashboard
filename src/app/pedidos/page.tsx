@@ -7,17 +7,20 @@ import { PackingCard } from "@/components/empacador/packing-card";
 import { PackingHistory } from "@/components/empacador/packing-history";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { fetchPedidos } from "@/lib/api";
+import { useRole } from "@/lib/role-context";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { Pedido, RolUsuario } from "@/lib/types";
 
 export default function PedidosPage() {
+  const { clienteId } = useRole();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [tabEmpacador, setTabEmpacador] = useState<"pendientes" | "historial">("pendientes");
 
   const loadData = useCallback(async () => {
-    try { setPedidos(await fetchPedidos()); } catch (err) { console.error(err); }
-  }, []);
+    if (!clienteId) return;
+    try { setPedidos(await fetchPedidos(clienteId)); } catch (err) { console.error(err); }
+  }, [clienteId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
