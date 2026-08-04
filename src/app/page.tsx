@@ -45,12 +45,18 @@ export default function HomePage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // NOTA: la suscripcion tiene que filtrar por cliente_id. Sin el filtro,
+  // un cambio en pedidos de CUALQUIER cliente (incluye la sincronizacion
+  // periodica de n8n) recarga todo para todos los usuarios conectados, sin
+  // importar a que cliente pertenecen -- eso se sentia como carga lenta o
+  // que la pagina "nunca termina", sobre todo en redes moviles.
   useEffect(() => {
+    if (!clienteId) return;
     const ch = supabase.channel("pedidos-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => loadData())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [loadData]);
+  }, [loadData, clienteId]);
 
   const pendientes = useMemo(
     () => pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado)),
