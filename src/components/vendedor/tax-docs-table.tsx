@@ -28,7 +28,7 @@ const DOC_LABELS: Record<TipoDocumentoTributario, { label: string; className: st
   nota_credito: { label: "Nota de credito", className: "bg-amber-50 text-amber-700" },
 };
 
-function DetalleVendedor({ pedido, doc }: { pedido: Pedido; doc?: Archivo }) {
+function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) {
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -80,13 +80,17 @@ function DetalleVendedor({ pedido, doc }: { pedido: Pedido; doc?: Archivo }) {
 
         <div className="space-y-4">
           <div>
-            <p className="eyebrow mb-2.5 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Documento tributario</p>
-            {doc ? (
-              <a href={publicUrl("documentos", doc.url)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40">
-                <FileCheck className="h-4 w-4 text-primary" />
-                <span className="capitalize">{doc.tipo.replace("_", " ")}</span>
-              </a>
+            <p className="eyebrow mb-2.5 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Documentos tributarios</p>
+            {docs.length > 0 ? (
+              <div className="flex flex-col gap-1.5">
+                {docs.map((doc) => (
+                  <a key={doc.id} href={publicUrl("documentos", doc.url)} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40">
+                    <FileCheck className="h-4 w-4 text-primary" />
+                    <span className="capitalize">{doc.tipo.replace("_", " ")}</span>
+                  </a>
+                ))}
+              </div>
             ) : <p className="text-xs text-muted-foreground">Aun sin documento</p>}
           </div>
 
@@ -136,7 +140,7 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
   const [tab, setTab] = useState<VistaTab>("activos");
   const [filter, setFilter] = useState<"all" | "sin" | TipoDocumentoTributario>("all");
   const [busqueda, setBusqueda] = useState("");
-  const [docs, setDocs] = useState<Record<string, Archivo | undefined>>({});
+  const [docs, setDocs] = useState<Record<string, Archivo[]>>({});
   const [uploading, setUploading] = useState<string | null>(null);
   const [activo, setActivo] = useState<string | null>(null);
   const [tipoSel, setTipoSel] = useState<TipoDocumentoTributario>("boleta");
@@ -159,8 +163,8 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
         pedidos.slice(0, 60).map(async (p) => {
           try {
             const arch = await fetchArchivos(p.id);
-            return [p.id, arch.find((a) => esDocumentoTributario(a.tipo))] as const;
-          } catch { return [p.id, undefined] as const; }
+            return [p.id, arch.filter((a) => esDocumentoTributario(a.tipo))] as const;
+          } catch { return [p.id, [] as Archivo[]] as const; }
         })
       );
       if (!cancel) setDocs(Object.fromEntries(entries));
@@ -179,7 +183,7 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
         pedido_id: pedido.id, tipo: tipoSel, url, nombre_archivo: file.name,
       });
       const arch = await fetchArchivos(pedido.id);
-      setDocs((prev) => ({ ...prev, [pedido.id]: arch.find((a) => esDocumentoTributario(a.tipo)) }));
+      setDocs((prev) => ({ ...prev, [pedido.id]: arch.filter((a) => esDocumentoTributario(a.tipo)) }));
       setActivo(null);
     } catch (e) { console.error(e); }
     finally { setUploading(null); pendienteRef.current = null; if (fileRef.current) fileRef.current.value = ""; }
@@ -190,12 +194,12 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
   );
 
   const visibles = pedidosDeLaPestana.filter((p) => {
-    const d = docs[p.id];
+    const d = docs[p.id] ?? [];
     const q = busqueda.trim().toLowerCase();
     if (q && !(p.id_plataforma.toLowerCase().includes(q) || (p.cliente_nombre || "").toLowerCase().includes(q))) return false;
     if (filter === "all") return true;
-    if (filter === "sin") return !d;
-    return d?.tipo === filter;
+    if (filter === "sin") return d.length === 0;
+    return d.some((doc) => doc.tipo === filter);
   });
 
   const cantidadCancelados = pedidos.filter((p) => p.estado === "cancelled").length;
@@ -249,7 +253,10 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
 
       <div className="space-y-2">
         {visibles.map((p) => {
-          const doc = docs[p.id];
+          const docsPedido = docs[p.id] ?? [];
+          const tiposFaltantes = TIPOS_DOCUMENTO_TRIBUTARIO.filter(
+            (t) => !docsPedido.some((d) => d.tipo === t)
+          );
           const abierto = abiertos.has(p.id);
           return (
             <div key={p.id} className={cn("card-premium overflow-hidden", abierto && "ring-1 ring-primary/15", p.estado === "cancelled" && "opacity-80")}>
@@ -278,12 +285,14 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
 
                 <span className="tabular hidden shrink-0 text-sm font-medium sm:block">{formatCLP(p.total_pagado)}</span>
 
-                <span className="shrink-0">
-                  {doc ? (
-                    <span className={cn("pill", DOC_LABELS[doc.tipo as TipoDocumentoTributario]?.className)}>
-                      <FileCheck className="h-3 w-3" />
-                      <span className="hidden sm:inline">{DOC_LABELS[doc.tipo as TipoDocumentoTributario]?.label}</span>
-                    </span>
+                <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                  {docsPedido.length > 0 ? (
+                    docsPedido.map((d) => (
+                      <span key={d.id} className={cn("pill", DOC_LABELS[d.tipo as TipoDocumentoTributario]?.className)}>
+                        <FileCheck className="h-3 w-3" />
+                        <span className="hidden sm:inline">{DOC_LABELS[d.tipo as TipoDocumentoTributario]?.label}</span>
+                      </span>
+                    ))
                   ) : (
                     <span className="pill bg-secondary text-muted-foreground">
                       <AlertCircle className="h-3 w-3" />
@@ -295,36 +304,41 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
 
               {abierto && (
                 <>
-                  <DetalleVendedor pedido={p} doc={doc} />
+                  <DetalleVendedor pedido={p} docs={docsPedido} />
                   {tab === "activos" && (
                     <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
-                      {doc ? (
-                        <a href={supabase.storage.from("documentos").getPublicUrl(doc.url).data.publicUrl}
+                      {docsPedido.map((d) => (
+                        <a key={d.id} href={supabase.storage.from("documentos").getPublicUrl(d.url).data.publicUrl}
                           target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40">
-                          <Eye className="h-3.5 w-3.5" /> Ver documento
+                          <Eye className="h-3.5 w-3.5" /> Ver {DOC_LABELS[d.tipo as TipoDocumentoTributario]?.label.toLowerCase()}
                         </a>
-                      ) : activo === p.id ? (
-                        <>
-                          <select value={tipoSel} onChange={(e) => setTipoSel(e.target.value as TipoDocumentoTributario)}
-                            className="rounded-lg border border-input bg-card px-2.5 py-2 text-xs">
-                            {TIPOS_DOCUMENTO_TRIBUTARIO.map((t) => (
-                              <option key={t} value={t}>{DOC_LABELS[t].label}</option>
-                            ))}
-                          </select>
-                          <button onClick={() => { pendienteRef.current = p; fileRef.current?.click(); }}
-                            disabled={uploading === p.id}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60">
-                            {uploading === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                            Elegir archivo
+                      ))}
+
+                      {tiposFaltantes.length > 0 && (
+                        activo === p.id ? (
+                          <>
+                            <select value={tipoSel} onChange={(e) => setTipoSel(e.target.value as TipoDocumentoTributario)}
+                              className="rounded-lg border border-input bg-card px-2.5 py-2 text-xs">
+                              {tiposFaltantes.map((t) => (
+                                <option key={t} value={t}>{DOC_LABELS[t].label}</option>
+                              ))}
+                            </select>
+                            <button onClick={() => { pendienteRef.current = p; fileRef.current?.click(); }}
+                              disabled={uploading === p.id}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60">
+                              {uploading === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                              Elegir archivo
+                            </button>
+                            <button onClick={() => setActivo(null)} className="px-2 text-xs text-muted-foreground">Cancelar</button>
+                          </>
+                        ) : (
+                          <button onClick={() => { setActivo(p.id); setTipoSel(tiposFaltantes[0]); }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
+                            <Upload className="h-3.5 w-3.5" />
+                            {docsPedido.length > 0 ? "Agregar documento (ej. nota de credito)" : "Subir documento tributario"}
                           </button>
-                          <button onClick={() => setActivo(null)} className="px-2 text-xs text-muted-foreground">Cancelar</button>
-                        </>
-                      ) : (
-                        <button onClick={() => setActivo(p.id)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
-                          <Upload className="h-3.5 w-3.5" /> Subir documento tributario
-                        </button>
+                        )
                       )}
                     </div>
                   )}
