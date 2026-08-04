@@ -9,7 +9,7 @@ interface Props {
 }
 
 export function AppShell({ children }: Props) {
-  const { rol, listo } = useRole();
+  const { rol, listo, signOut } = useRole();
 
   return (
     <div className="relative min-h-screen">
@@ -20,7 +20,23 @@ export function AppShell({ children }: Props) {
       </div>
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
-        {!listo ? null : typeof children === "function" ? children(rol) : children}
+        {!listo ? null : rol === null ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+            <p className="max-w-sm text-sm text-muted-foreground">
+              Tu cuenta no tiene un rol activo asignado en este panel. Pide a un administrador que te invite.
+            </p>
+            <button
+              onClick={() => signOut()}
+              className="rounded-lg border border-input bg-card px-4 py-2 text-sm font-medium transition-colors hover:border-primary/40"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        ) : typeof children === "function" ? (
+          children(rol)
+        ) : (
+          children
+        )}
       </main>
     </div>
   );
