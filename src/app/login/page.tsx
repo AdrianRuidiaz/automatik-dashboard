@@ -104,10 +104,37 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
+      {/* Glow orbs ambientales: mismos tonos (ambar / morado) que ya usaba
+          el fondo estatico del body, ahora con movimiento lento para dar
+          sensacion de profundidad sin tocar la paleta. */}
+      <div
+        aria-hidden
+        className="glow-orb animate-float-slow"
+        style={{
+          width: 420,
+          height: 420,
+          top: "-10%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          background: "hsl(38 80% 50% / 0.16)",
+        }}
+      />
+      <div
+        aria-hidden
+        className="glow-orb animate-float-slower"
+        style={{
+          width: 360,
+          height: 360,
+          bottom: "-15%",
+          right: "10%",
+          background: "hsl(250 60% 50% / 0.14)",
+        }}
+      />
+
+      <div className="relative z-10 w-full max-w-sm">
         <div className="mb-8 flex items-center justify-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/20">
+          <div className="logo-glow flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600">
             <Zap className="h-4.5 w-4.5 text-[hsl(230,15%,7%)]" strokeWidth={2.5} />
           </div>
           <span className="font-serif text-xl tracking-tight">
@@ -115,7 +142,7 @@ export default function LoginPage() {
           </span>
         </div>
 
-        <div className="card-premium p-6">
+        <div className="card-premium animate-in-soft p-6">
           {needsBootstrap ? (
             <>
               <h1 className="mb-1 text-lg font-medium">Configura tu cuenta de administrador</h1>
@@ -131,7 +158,7 @@ export default function LoginPage() {
                   className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
                 {error && <p className="text-xs text-red-500">{error}</p>}
                 <button disabled={loading} type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
+                  className="btn-premium flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Crear cuenta y entrar
                 </button>
               </form>
@@ -143,7 +170,7 @@ export default function LoginPage() {
                 Si <span className="font-medium text-foreground">{email}</span> tiene una cuenta en este panel, te llegará un link para elegir una nueva contraseña.
               </p>
               <button onClick={() => { setModo("login"); setError(null); }}
-                className="w-full rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
+                className="btn-premium w-full rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
                 Volver a iniciar sesión
               </button>
             </>
@@ -158,11 +185,11 @@ export default function LoginPage() {
                   className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
                 {error && <p className="text-xs text-red-500">{error}</p>}
                 <button disabled={loading} type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
+                  className="btn-premium flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Enviar link
                 </button>
                 <button type="button" onClick={() => { setModo("login"); setError(null); }}
-                  className="w-full rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
+                  className="btn-premium w-full rounded-lg border border-input px-3 py-2 text-sm text-muted-foreground hover:bg-secondary">
                   Volver
                 </button>
               </form>
@@ -177,7 +204,7 @@ export default function LoginPage() {
                   className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm outline-none focus:border-primary" />
                 {error && <p className="text-xs text-red-500">{error}</p>}
                 <button disabled={loading} type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
+                  className="btn-premium flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60">
                   {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Entrar
                 </button>
               </form>
