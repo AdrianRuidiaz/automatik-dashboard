@@ -58,11 +58,11 @@ export function TrendChart({ data }: TrendChartProps) {
     <div>
       <div className="mb-3 flex items-center gap-5">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-2.5 w-2.5 rounded-full bg-indigo-500" />
+          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500" />
           Mercado Libre
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
           Falabella
         </div>
       </div>
@@ -70,12 +70,12 @@ export function TrendChart({ data }: TrendChartProps) {
         <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
           <defs>
             <linearGradient id="gradML" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+              <stop offset="0%" stopColor="#eab308" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#eab308" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradFA" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#f59e0b" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+              <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
+              <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -98,25 +98,25 @@ export function TrendChart({ data }: TrendChartProps) {
           />
           <Tooltip
             content={<CustomTooltip />}
-            cursor={{ stroke: "hsl(243 75% 59%)", strokeWidth: 1, strokeDasharray: "4 4", strokeOpacity: 0.4 }}
+            cursor={{ stroke: "#eab308", strokeWidth: 1, strokeDasharray: "4 4", strokeOpacity: 0.4 }}
           />
           <Area
             type="monotone"
             dataKey="Mercado Libre"
-            stroke="#6366f1"
+            stroke="#eab308"
             strokeWidth={2.5}
             fill="url(#gradML)"
-            dot={{ r: 3, fill: "#6366f1", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#6366f1", strokeWidth: 2, stroke: "#fff" }}
+            dot={{ r: 3, fill: "#eab308", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#eab308", strokeWidth: 2, stroke: "#fff" }}
           />
           <Area
             type="monotone"
             dataKey="Falabella"
-            stroke="#f59e0b"
+            stroke="#22c55e"
             strokeWidth={2.5}
             fill="url(#gradFA)"
-            dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
-            activeDot={{ r: 5, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
+            dot={{ r: 3, fill: "#22c55e", strokeWidth: 0 }}
+            activeDot={{ r: 5, fill: "#22c55e", strokeWidth: 2, stroke: "#fff" }}
           />
         </AreaChart>
       </ResponsiveContainer>
