@@ -14,10 +14,21 @@ import { useRole } from "@/lib/role-context";
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowRight, FileText, RefreshCw, AlertTriangle, CheckCircle, Clock, Package } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw, AlertTriangle, CheckCircle, Clock, Package, Inbox, PackageCheck, ClipboardList } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
+
+function EstadoVacio({ icon: Icon, texto }: { icon: typeof Inbox; texto: string }) {
+  return (
+    <div className="animate-in-soft flex flex-col items-center gap-3 py-12 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/70">
+        <Icon className="h-5 w-5 text-muted-foreground" />
+      </div>
+      <p className="text-sm text-muted-foreground">{texto}</p>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { clienteId } = useRole();
@@ -143,7 +154,7 @@ export default function HomePage() {
                     </span>
                   )}
                   <button onClick={loadData} aria-label="Actualizar"
-                    className="rounded-lg border border-input bg-card p-2 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                    className="btn-premium rounded-lg border border-input bg-card p-2 text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
                     <RefreshCw className={cn("h-3.5 w-3.5", refreshing && "animate-spin")} />
                   </button>
                 </div>
@@ -166,7 +177,7 @@ export default function HomePage() {
                   </Link>
                 </div>
 
-                <div className="space-y-2 md:hidden">
+                <div className="animate-in-soft space-y-2 md:hidden">
                   {ultimos.map((p) => (
                     <Link key={p.id} href="/pedidos" className="card-premium block p-3">
                       <div className="flex items-start justify-between gap-2">
@@ -186,7 +197,7 @@ export default function HomePage() {
                   ))}
                 </div>
 
-                <div className="card-premium hidden overflow-hidden md:block">
+                <div className="card-premium animate-in-soft hidden overflow-hidden md:block">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-border bg-secondary/40 text-left">
@@ -229,7 +240,7 @@ export default function HomePage() {
                 </div>
 
                 {ultimos.length === 0 && (
-                  <p className="py-12 text-center text-sm text-muted-foreground">Aun no hay pedidos</p>
+                  <EstadoVacio icon={Inbox} texto="Aun no hay pedidos" />
                 )}
               </section>
             </div>
@@ -280,9 +291,10 @@ export default function HomePage() {
                   />
 
                   {pendientesFiltrados.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">
-                      {busqueda ? "No se encontraron pedidos" : "No hay pedidos pendientes de empaque"}
-                    </p>
+                    <EstadoVacio
+                      icon={PackageCheck}
+                      texto={busqueda ? "No se encontraron pedidos" : "No hay pedidos pendientes de empaque"}
+                    />
                   ) : (
                     <div className="space-y-6">
                       {urgentes.length > 0 && (
@@ -323,9 +335,7 @@ export default function HomePage() {
               {empacadorTab === "historial" && (
                 <div className="mt-3">
                   {historial.length === 0 ? (
-                    <p className="py-12 text-center text-sm text-muted-foreground">
-                      Aun no hay pedidos entregados
-                    </p>
+                    <EstadoVacio icon={ClipboardList} texto="Aun no hay pedidos entregados" />
                   ) : (
                     <div className="space-y-2">
                       {historial.map((p) => (
