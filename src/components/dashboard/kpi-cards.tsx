@@ -12,12 +12,12 @@ export function KpiCards({ data }: KpiCardsProps) {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-28 animate-pulse rounded-xl border border-border bg-card" />
+            <div key={i} className="skeleton h-28" />
           ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
           {[0, 1].map((i) => (
-            <div key={i} className="h-20 animate-pulse rounded-xl border border-border bg-card" />
+            <div key={i} className="skeleton h-20" />
           ))}
         </div>
       </div>
@@ -27,7 +27,7 @@ export function KpiCards({ data }: KpiCardsProps) {
   const mainCards = [
     {
       icon: Package, label: "Total pedidos", value: String(data.total_pedidos),
-      sub: `${data.pedidos_ml} ML \u00b7 ${data.pedidos_fa} FA`, tone: "neutral" as const,
+      sub: `${data.pedidos_ml} ML · ${data.pedidos_fa} FA`, tone: "neutral" as const,
     },
     {
       icon: DollarSign, label: "Ingresos", value: formatCLP(data.ingresos_totales),
@@ -35,7 +35,7 @@ export function KpiCards({ data }: KpiCardsProps) {
     },
     {
       icon: Truck, label: "Por despachar", value: String(data.por_despachar),
-      sub: `${data.por_despachar_ml} ML \u00b7 ${data.por_despachar_fa} FA`,
+      sub: `${data.por_despachar_ml} ML · ${data.por_despachar_fa} FA`,
       tone: data.por_despachar > 0 ? ("warn" as const) : ("neutral" as const),
     },
     {
@@ -55,9 +55,9 @@ export function KpiCards({ data }: KpiCardsProps) {
     },
     {
       icon: TrendingDown,
-      label: "Tasa de cancelaci\u00f3n",
+      label: "Tasa de cancelación",
       value: `${data.tasa_cancelacion}%`,
-      sub: data.tasa_cancelacion > 8 ? "Alta \u2014 revisar" : data.tasa_cancelacion > 5 ? "Moderada" : "Saludable",
+      sub: data.tasa_cancelacion > 8 ? "Alta — revisar" : data.tasa_cancelacion > 5 ? "Moderada" : "Saludable",
       tone: data.tasa_cancelacion > 8 ? ("danger" as const) : data.tasa_cancelacion > 5 ? ("warn" as const) : ("success" as const),
     },
   ];
@@ -83,11 +83,13 @@ export function KpiCards({ data }: KpiCardsProps) {
     danger: "text-rose-600",
   };
 
+  const stagger = ["stagger-1", "stagger-2", "stagger-3", "stagger-4"];
+
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {mainCards.map((card) => (
-          <div key={card.label} className="card-premium relative overflow-hidden p-4">
+        {mainCards.map((card, i) => (
+          <div key={card.label} className={cn("card-premium animate-in-soft relative overflow-hidden p-4", stagger[i % stagger.length])}>
             {card.tone !== "neutral" && (
               <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", glow[card.tone])} />
             )}
@@ -106,8 +108,8 @@ export function KpiCards({ data }: KpiCardsProps) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {secondaryCards.map((card) => (
-          <div key={card.label} className="card-premium relative overflow-hidden p-3 sm:p-4">
+        {secondaryCards.map((card, i) => (
+          <div key={card.label} className={cn("card-premium animate-in-soft relative overflow-hidden p-3 sm:p-4", stagger[i % stagger.length])}>
             {card.tone !== "neutral" && (
               <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", glow[card.tone])} />
             )}
