@@ -46,6 +46,12 @@ export interface PedidoItem {
     sku: string | null;
 }
 
+// Referencia minima a public.usuarios_roles, tal como viene embebida por
+// Supabase al pedir `usuarios_roles(nombre)` en un select().
+export interface UsuarioRef {
+    nombre: string;
+}
+
 export interface Pedido {
     id: string;
     cliente_id: string;
@@ -62,6 +68,13 @@ export interface Pedido {
     items: PedidoItem[];
     created_at: string;
     updated_at: string;
+    // Tarea: trazabilidad de cancelacion. cancelado_por es el usuarios_roles.id
+    // de quien cancelo; cancelado_por_usuario viene embebido (join) solo para
+    // mostrar el nombre sin una consulta aparte. Ambos son null si el pedido
+    // nunca fue cancelado (o si se cancelo antes de que existiera esta columna).
+    cancelado_por?: string | null;
+    cancelado_en?: string | null;
+    cancelado_por_usuario?: UsuarioRef | null;
 }
 
 export interface Archivo {
@@ -73,6 +86,10 @@ export interface Archivo {
     descripcion: string | null;
     subido_por: string | null;
     created_at: string;
+    // Tarea: saber que empacador subio la evidencia. Embebido (join) igual
+    // que cancelado_por_usuario en Pedido. Null para archivos subidos antes
+    // de esta funcionalidad (subido_por quedo sin registrar).
+    subido_por_usuario?: UsuarioRef | null;
 }
 
 export interface DashboardResumen {
