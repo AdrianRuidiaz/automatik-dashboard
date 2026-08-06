@@ -16,19 +16,9 @@ import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
 import { ArrowRight, FileText, RefreshCw, AlertTriangle, CheckCircle, Clock, Package, Inbox, PackageCheck, ClipboardList } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
+import { EstadoVacio } from "@/components/ui/estado-vacio";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
-
-function EstadoVacio({ icon: Icon, texto }: { icon: typeof Inbox; texto: string }) {
-  return (
-    <div className="animate-in-soft flex flex-col items-center gap-3 py-12 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-secondary/70">
-        <Icon className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <p className="text-sm text-muted-foreground">{texto}</p>
-    </div>
-  );
-}
 
 export default function HomePage() {
   const { clienteId } = useRole();
