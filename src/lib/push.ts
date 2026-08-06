@@ -2,9 +2,10 @@ import { supabase } from "./supabase";
 
 // Llave publica VAPID (segura de exponer al navegador por diseño del
 // protocolo Web Push -- la privada solo vive en la Edge Function
-// send-push). Sin esta variable en Vercel, pushSoportado() devuelve false
-// y el boton de notificaciones ni siquiera se muestra.
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+// send-push, nunca en el frontend). Se hardcodea en vez de pedirla como
+// variable de entorno de Vercel porque no es un secreto: el navegador la
+// necesita a plena vista para poder suscribirse.
+const VAPID_PUBLIC_KEY = "BLM9GbYEEC-kler9ih3cLWdSJQmLU_yX9-ATifLEXG9pNImgi0Onqo4j_gADtRRpAi3pkEer64B_2C1OLjzTspQ";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -19,8 +20,7 @@ export function pushSoportado(): boolean {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    Boolean(VAPID_PUBLIC_KEY)
+    "PushManager" in window
   );
 }
 
