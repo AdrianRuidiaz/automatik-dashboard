@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight, Camera, Package, CheckCircle, Clock, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, Camera, Package, CheckCircle, Clock, Search, UserCheck } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
@@ -25,6 +25,13 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
 
   // tipo real en la base de datos es "evidencia_empaque" (ver public.archivos)
   const evidencias = archivos.filter((a) => a.tipo === "evidencia_empaque");
+
+  // Todas las fotos de un mismo pedido normalmente las sube la misma persona
+  // en la misma sesion de empaque, asi que basta con mostrar un nombre por
+  // pedido (el primero que tenga subido_por_usuario resuelto) en vez de
+  // repetirlo foto por foto. Queda vacio para evidencia subida antes de que
+  // existiera esta trazabilidad (subido_por sin registrar).
+  const empacadoPor = evidencias.find((e) => e.subido_por_usuario?.nombre)?.subido_por_usuario?.nombre;
 
   const getPublicUrl = (path: string) =>
     supabase.storage.from("evidencias").getPublicUrl(path).data.publicUrl;
@@ -68,25 +75,33 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
           {loading ? (
             <p className="text-xs text-muted-foreground">Cargando...</p>
           ) : evidencias.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {evidencias.map((ev) => {
-                const url = getPublicUrl(ev.url);
-                return (
-                  <button
-                    key={ev.id}
-                    onClick={() => setLightbox(url)}
-                    className="group relative h-24 w-24 overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-md active:scale-95"
-                  >
-                    <img
-                      src={url}
-                      alt={ev.nombre_archivo ?? "Evidencia"}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              {empacadoPor && (
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                  Empacado por <span className="font-medium text-foreground">{empacadoPor}</span>
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {evidencias.map((ev) => {
+                  const url = getPublicUrl(ev.url);
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => setLightbox(url)}
+                      className="group relative h-24 w-24 overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-md active:scale-95"
+                    >
+                      <img
+                        src={url}
+                        alt={ev.nombre_archivo ?? "Evidencia"}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <p className="text-xs text-muted-foreground">Sin evidencias subidas</p>
           )}
