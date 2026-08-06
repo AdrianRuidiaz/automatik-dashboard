@@ -7,6 +7,10 @@ import type { RolUsuario } from "@/lib/types";
 
 interface Usuario {
   id: string;
+  /** id de la fila en public.usuarios_roles (distinto de auth_user_id).
+   *  Se usa para dejar registro de quien hizo una accion (subir evidencia,
+   *  cancelar un pedido) sin tener que resolverlo en cada punto de uso. */
+  rolId: string;
   nombre: string;
   email: string;
 }
@@ -85,7 +89,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     async function cargarPerfil(userId: string, email: string) {
       const { data } = await supabase
         .from("usuarios_roles")
-        .select("rol, nombre, email, cliente_id")
+        .select("id, rol, nombre, email, cliente_id")
         .eq("auth_user_id", userId)
         .eq("activo", true)
         .maybeSingle();
@@ -101,7 +105,12 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
 
       setRolReal(data.rol as string);
-      setUsuario({ id: userId, nombre: data.nombre || email, email: data.email || email });
+      setUsuario({
+        id: userId,
+        rolId: data.id as string,
+        nombre: data.nombre || email,
+        email: data.email || email,
+      });
       setClientePropioId(data.cliente_id as string);
 
       // Solo el super_admin necesita conocer el resto de clientes (modo
