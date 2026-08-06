@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Camera, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2, PackageCheck, User, Timer } from "lucide-react";
 import { cn, formatFechaCorta } from "@/lib/utils";
 import { uploadArchivo, registrarArchivo, marcarPedidoEmpacado } from "@/lib/api";
+import { useRole } from "@/lib/role-context";
 import type { Pedido } from "@/lib/types";
 
 interface PackingCardProps {
@@ -51,6 +52,7 @@ function DeadlineBadge({ fecha }: { fecha: string | null }) {
 }
 
 export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
+  const { usuario } = useRole();
   const [fotos, setFotos] = useState<{ file: File; preview: string }[]>([]);
   const [marking, setMarking] = useState(false);
   const [packed, setPacked] = useState(false);
@@ -77,6 +79,10 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
   // se podía marcar "empacado" sin haber subido ninguna foto. Ahora es un
   // único flujo: subir fotos -> el backend vuelve a validar la cantidad ->
   // recién ahí se cambia el estado del pedido.
+  //
+  // Cada foto se registra con subido_por = usuario.rolId (el id de la fila
+  // en usuarios_roles del empacador logueado), asi el admin puede ver despues
+  // quien empaco cada pedido sin tener que preguntar.
   const handleMarkPacked = async () => {
     if (fotos.length < MIN_FOTOS) {
       setError(`Debes adjuntar al menos ${MIN_FOTOS} foto de evidencia antes de marcar como empacado.`);
@@ -99,6 +105,7 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           tipo: "evidencia_empaque",
           url,
           nombre_archivo: fotos[i].file.name,
+          subido_por: usuario?.rolId ?? null,
         });
       }
 
