@@ -15,24 +15,28 @@ import type {
 // Ahora cada funcion recibe el cliente_id como parametro: quien lo resuelve
 // es role-context (propio para roles normales, elegible para super_admin).
 
+// cancelado_por_usuario: embebido via el FK pedidos_cancelado_por_fkey, para
+// poder mostrar "Cancelado por X" sin una consulta aparte por pedido.
+const PEDIDO_SELECT = "*, cancelado_por_usuario:usuarios_roles!pedidos_cancelado_por_fkey(nombre)";
+
 export async function fetchPedidos(clienteId: string): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from("pedidos")
-      .select("*")
+      .select(PEDIDO_SELECT)
       .eq("cliente_id", clienteId)
       .order("fecha_pedido", { ascending: false });
     if (error) throw error;
-    return data ?? [];
+    return (data as unknown as Pedido[]) ?? [];
 }
 
 export async function fetchPedido(id: string): Promise<Pedido | null> {
     const { data, error } = await supabase
       .from("pedidos")
-      .select("*")
+      .select(PEDIDO_SELECT)
       .eq("id", id)
       .single();
     if (error) throw error;
-    return data;
+    return data as unknown as Pedido;
 }
 
 export async function fetchPedidoByPlataforma(
@@ -85,14 +89,16 @@ export async function fetchTendenciaDiaria(
     return data ?? [];
 }
 
+// subido_por_usuario: embebido via el FK archivos_subido_por_fkey, para
+// mostrar que empacador subio cada evidencia sin una consulta aparte.
 export async function fetchArchivos(pedidoId: string): Promise<Archivo[]> {
     const { data, error } = await supabase
       .from("archivos")
-      .select("*")
+      .select("*, subido_por_usuario:usuarios_roles!archivos_subido_por_fkey(nombre)")
       .eq("pedido_id", pedidoId)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return data ?? [];
+    return (data as unknown as Archivo[]) ?? [];
 }
 
 export async function uploadArchivo(
@@ -113,12 +119,17 @@ export async function uploadArchivo(
 // sin columna `subtipo`; `tipo` es un CHECK constraint con valores fijos).
 // Antes esta funcion mandaba `storage_path` y valores como "evidencia" /
 // "documento_tributario" que no existen en la base y hacian fallar el insert.
+//
+// subido_por: usuarios_roles.id (RoleContext.usuario.rolId) de quien subio
+// el archivo. Opcional para no romper otros llamadores (ej. etiquetas que
+// suben workflows de n8n via service role, sin un usuario detras).
 export async function registrarArchivo(archivo: {
     pedido_id: string;
     tipo: TipoArchivo;
     url: string;
     nombre_archivo?: string | null;
     descripcion?: string | null;
+    subido_por?: string | null;
 }): Promise<void> {
     const { error } = await supabase.from("archivos").insert({
           pedido_id: archivo.pedido_id,
@@ -126,6 +137,7 @@ export async function registrarArchivo(archivo: {
           url: archivo.url,
           nombre_archivo: archivo.nombre_archivo ?? null,
           descripcion: archivo.descripcion ?? null,
+          subido_por: archivo.subido_por ?? null,
     });
     if (error) throw error;
 }
@@ -144,8 +156,22 @@ export async function updateEstadoPedido(
 // Tarea: cancelar un pedido NUNCA lo elimina, solo actualiza su estado.
 // Se deja como funcion explicita (en vez de usar updateEstadoPedido directo
 // desde los componentes) para que quede un unico punto de entrada auditable.
-export async function cancelarPedido(pedidoId: string): Promise<void> {
-    await updateEstadoPedido(pedidoId, "cancelled");
+//
+// canceladoPor es el usuarios_roles.id (RoleContext.usuario.rolId) de quien
+// hace clic en "Cancelar pedido": queda guardado junto a la fecha para poder
+// mostrar "Cancelado por X el ..." en el detalle del pedido.
+export async function cancelarPedido(pedidoId: string, canceladoPor?: string | null): Promise<void> {
+    const ahora = new Date().toISOString();
+    const { error } = await supabase
+      .from("pedidos")
+      .update({
+        estado: "cancelled",
+        updated_at: ahora,
+        cancelado_por: canceladoPor ?? null,
+        cancelado_en: ahora,
+      })
+      .eq("id", pedidoId);
+    if (error) throw error;
 }
 
 export interface UpsertPedidoResultado {
