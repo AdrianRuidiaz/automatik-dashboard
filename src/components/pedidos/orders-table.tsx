@@ -5,13 +5,14 @@ import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2 } from "lucide-react";
+import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2, PackageX } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos, cancelarPedido } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
 import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
+import { EstadoVacio } from "@/components/ui/estado-vacio";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
@@ -334,7 +335,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
             className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
         </div>
         <button onClick={() => setShowFilters((v) => !v)}
-          className={cn("inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
+          className={cn("btn-premium inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-colors",
             showFilters || activeFilterCount > 0 ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground hover:text-foreground")}>
           <Filter className="h-3.5 w-3.5" />
           Filtros
@@ -346,7 +347,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
         </button>
         {estadoFilter !== "cancelled" && (
           <button onClick={() => setEstadoFilter("cancelled")}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
+            className="btn-premium inline-flex items-center gap-1.5 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground">
             Ver cancelados
           </button>
         )}
@@ -359,7 +360,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
           onClick={() => exportarPedidosCSV(filtered)}
           disabled={filtered.length === 0}
           title={filtered.length === 0 ? "No hay pedidos para exportar" : `Exportar ${filtered.length} pedido${filtered.length === 1 ? "" : "s"} a CSV`}
-          className="ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-40 disabled:hover:text-muted-foreground"
+          className="btn-premium ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-40 disabled:hover:text-muted-foreground"
         >
           <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
         </button>
@@ -426,8 +427,55 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
         </div>
       )}
 
-      {/* Tabla responsive */}
-      <div className="overflow-x-auto -mx-4 md:mx-0">
+      {/* Vista de tarjetas: mobile. La tabla con scroll horizontal funciona
+          pero no es agradable al tacto, asi que por debajo de md se muestra
+          como tarjetas apiladas (mismo lenguaje visual que "Ultimos pedidos"
+          del dashboard) y se tocan para expandir el detalle. */}
+      <div className="animate-in-soft space-y-2 md:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const p = row.original;
+          const abierto = expandedRows.has(p.id);
+          return (
+            <div key={row.id} className="card-premium overflow-hidden">
+              <button
+                type="button"
+                onClick={() => toggleRow(p.id)}
+                className="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors active:bg-white/[0.03]"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="tabular text-sm font-semibold">{p.id_plataforma}</span>
+                    <span className={cn("pill shrink-0", p.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
+                      {p.plataforma === "ML" ? "ML" : "FA"}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {p.cliente_nombre || "Sin cliente"} · {formatFechaCorta(p.fecha_pedido)}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="tabular text-sm font-medium">{formatCLP(p.total_pagado)}</span>
+                    <EstadoBadge estado={p.estado} />
+                    {p.etiqueta_url && (
+                      <span
+                        role="button"
+                        onClick={(e) => { e.stopPropagation(); window.open(pdfUrl(p.etiqueta_url!), "_blank"); }}
+                        className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        <FileText className="h-3 w-3 text-red-500" /> PDF
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {abierto ? <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" /> : <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />}
+              </button>
+              {abierto && <OrderDetail pedido={p} />}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Tabla: desktop */}
+      <div className="hidden overflow-x-auto -mx-4 md:block md:mx-0">
         <div className="min-w-[640px] px-4 md:px-0">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -467,7 +515,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
       </div>
 
       {table.getRowModel().rows.length === 0 && (
-        <p className="py-12 text-center text-sm text-muted-foreground">No hay pedidos con esos filtros</p>
+        <EstadoVacio icon={PackageX} texto="No hay pedidos con esos filtros" />
       )}
 
       <div className="mt-3 flex items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -478,8 +526,8 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
           }
         </span>
         <div className="flex gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Anterior</button>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Siguiente</button>
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="btn-premium rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Anterior</button>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="btn-premium rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Siguiente</button>
         </div>
       </div>
     </div>
