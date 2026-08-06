@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2 } from "lucide-react";
+import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2, Download } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { pushSoportado, obtenerSuscripcionActual, activarNotificaciones, desactivarNotificaciones } from "@/lib/push";
+import { useInstallPrompt } from "@/lib/pwa-install";
 import { useState, useRef, useEffect } from "react";
 
 const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
@@ -153,6 +154,40 @@ function NotificacionesToggle({ variant }: { variant: "desktop" | "mobile" }) {
   );
 }
 
+// Boton "Instalar app". Solo aparece cuando el navegador ya disparo
+// beforeinstallprompt (osea: ya decidio por su cuenta que la app cumple los
+// criterios de instalable) y no esta instalada todavia. Antes de esto la
+// unica forma de instalar era el icono nativo de la barra de direcciones o
+// el menu del navegador, que mucha gente ni nota que existe.
+function InstalarAppBoton({ variant }: { variant: "desktop" | "mobile" }) {
+  const { puedeInstalar, instalar } = useInstallPrompt();
+
+  if (!puedeInstalar) return null;
+
+  if (variant === "mobile") {
+    return (
+      <button
+        onClick={instalar}
+        className="btn-premium flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-amber-400 transition-colors hover:bg-amber-400/10"
+      >
+        <Download className="h-4 w-4" />
+        Instalar Automatik
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={instalar}
+      title="Instalar Automatik como app"
+      className="btn-premium flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-400 transition-colors hover:bg-amber-400/15"
+    >
+      <Download className="h-3.5 w-3.5" />
+      Instalar
+    </button>
+  );
+}
+
 export function Navbar() {
   const pathname = usePathname();
   const { rol, usuario, esSuperAdmin, setVista, signOut, clienteNombre, clientesDisponibles, clienteId, setCliente } = useRole();
@@ -236,6 +271,8 @@ export function Navbar() {
 
         {/* Right side: desktop */}
         <div className="hidden items-center gap-3 md:flex">
+          <InstalarAppBoton variant="desktop" />
+
           <NotificacionesToggle variant="desktop" />
 
           {esSuperAdmin && <ClienteSwitcher />}
@@ -327,6 +364,7 @@ export function Navbar() {
             })}
 
             <div className="my-2 h-px bg-white/[0.06]" />
+            <InstalarAppBoton variant="mobile" />
             <NotificacionesToggle variant="mobile" />
 
             {esSuperAdmin && clientesDisponibles.length > 0 && (
