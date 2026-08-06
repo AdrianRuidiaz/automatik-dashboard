@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut, ChevronDown, Building2, Menu, X } from "lucide-react";
+import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2 } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { pushSoportado, obtenerSuscripcionActual, activarNotificaciones, desactivarNotificaciones } from "@/lib/push";
 import { useState, useRef, useEffect } from "react";
 
 const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
@@ -83,6 +84,72 @@ function ClienteSwitcher() {
         </div>
       )}
     </div>
+  );
+}
+
+// Boton de notificaciones push. Solo se muestra si el navegador las soporta
+// y hay una llave publica VAPID configurada (pushSoportado()) -- por eso el
+// estado arranca "oculto" y un efecto lo revela despues del montaje, para
+// no depender de APIs de navegador durante el render de servidor.
+function NotificacionesToggle({ variant }: { variant: "desktop" | "mobile" }) {
+  const [capaz, setCapaz] = useState(false);
+  const [estado, setEstado] = useState<"off" | "on" | "loading">("off");
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCapaz(pushSoportado());
+    obtenerSuscripcionActual()
+      .then((sub) => setEstado(sub ? "on" : "off"))
+      .catch(() => setEstado("off"));
+  }, []);
+
+  const toggle = async () => {
+    if (estado === "loading") return;
+    setMsg(null);
+    const activando = estado !== "on";
+    setEstado("loading");
+    const resultado = activando ? await activarNotificaciones() : await desactivarNotificaciones();
+    if (resultado.ok) {
+      setEstado(activando ? "on" : "off");
+    } else {
+      setEstado(activando ? "off" : "on");
+      setMsg(resultado.error ?? "No se pudo actualizar");
+      setTimeout(() => setMsg(null), 4000);
+    }
+  };
+
+  if (!capaz) return null;
+
+  if (variant === "mobile") {
+    return (
+      <>
+        <button
+          onClick={toggle}
+          disabled={estado === "loading"}
+          className="btn-premium flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90 disabled:opacity-60"
+        >
+          {estado === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className={cn("h-4 w-4", estado === "on" && "text-amber-400")} />}
+          {estado === "on" ? "Notificaciones activas" : "Activar notificaciones de pedidos nuevos"}
+        </button>
+        {msg && <p className="px-3 text-xs text-red-400">{msg}</p>}
+      </>
+    );
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={estado === "loading"}
+      title={msg || (estado === "on" ? "Notificaciones activas — click para desactivar" : "Avisar cuando entra un pedido nuevo")}
+      className={cn(
+        "btn-premium flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
+        estado === "on"
+          ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+          : "border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-amber-400/20 hover:text-white/90"
+      )}
+    >
+      {estado === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+    </button>
   );
 }
 
@@ -169,6 +236,8 @@ export function Navbar() {
 
         {/* Right side: desktop */}
         <div className="hidden items-center gap-3 md:flex">
+          <NotificacionesToggle variant="desktop" />
+
           {esSuperAdmin && <ClienteSwitcher />}
 
           {esSuperAdmin ? (
@@ -256,6 +325,9 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            <div className="my-2 h-px bg-white/[0.06]" />
+            <NotificacionesToggle variant="mobile" />
 
             {esSuperAdmin && clientesDisponibles.length > 0 && (
               <>
