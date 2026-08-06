@@ -3,6 +3,7 @@
 import { Package, DollarSign, Truck, XCircle, Receipt, TrendingDown } from "lucide-react";
 import { formatCLP, cn } from "@/lib/utils";
 import type { DashboardResumen } from "@/lib/types";
+import { CountUp } from "@/components/ui/count-up";
 
 interface KpiCardsProps { data: DashboardResumen | null; }
 
@@ -26,20 +27,20 @@ export function KpiCards({ data }: KpiCardsProps) {
 
   const mainCards = [
     {
-      icon: Package, label: "Total pedidos", value: String(data.total_pedidos),
+      icon: Package, label: "Total pedidos", rawValue: data.total_pedidos, format: (n: number) => String(Math.round(n)),
       sub: `${data.pedidos_ml} ML · ${data.pedidos_fa} FA`, tone: "neutral" as const,
     },
     {
-      icon: DollarSign, label: "Ingresos", value: formatCLP(data.ingresos_totales),
+      icon: DollarSign, label: "Ingresos", rawValue: data.ingresos_totales, format: (n: number) => formatCLP(Math.round(n)),
       sub: "excl. cancelados", tone: "success" as const,
     },
     {
-      icon: Truck, label: "Por despachar", value: String(data.por_despachar),
+      icon: Truck, label: "Por despachar", rawValue: data.por_despachar, format: (n: number) => String(Math.round(n)),
       sub: `${data.por_despachar_ml} ML · ${data.por_despachar_fa} FA`,
       tone: data.por_despachar > 0 ? ("warn" as const) : ("neutral" as const),
     },
     {
-      icon: XCircle, label: "Cancelados", value: String(data.cancelados),
+      icon: XCircle, label: "Cancelados", rawValue: data.cancelados, format: (n: number) => String(Math.round(n)),
       sub: `${formatCLP(data.monto_cancelados)} excl.`,
       tone: data.cancelados > 0 ? ("danger" as const) : ("neutral" as const),
     },
@@ -49,14 +50,16 @@ export function KpiCards({ data }: KpiCardsProps) {
     {
       icon: Receipt,
       label: "Ticket promedio",
-      value: formatCLP(data.ticket_promedio),
+      rawValue: data.ticket_promedio,
+      format: (n: number) => formatCLP(Math.round(n)),
       sub: "ingreso por pedido",
       tone: "neutral" as const,
     },
     {
       icon: TrendingDown,
       label: "Tasa de cancelación",
-      value: `${data.tasa_cancelacion}%`,
+      rawValue: data.tasa_cancelacion,
+      format: (n: number) => `${n}%`,
       sub: data.tasa_cancelacion > 8 ? "Alta — revisar" : data.tasa_cancelacion > 5 ? "Moderada" : "Saludable",
       tone: data.tasa_cancelacion > 8 ? ("danger" as const) : data.tasa_cancelacion > 5 ? ("warn" as const) : ("success" as const),
     },
@@ -98,9 +101,11 @@ export function KpiCards({ data }: KpiCardsProps) {
                 <card.icon className="h-4 w-4" />
               </div>
               <p className="eyebrow">{card.label}</p>
-              <p className={cn("tabular mt-1 text-2xl font-semibold tracking-tight sm:text-[28px]", valueTone[card.tone])}>
-                {card.value}
-              </p>
+              <CountUp
+                value={card.rawValue}
+                format={card.format}
+                className={cn("tabular mt-1 block text-2xl font-semibold tracking-tight sm:text-[28px]", valueTone[card.tone])}
+              />
               <p className="mt-1 truncate text-[11px] text-muted-foreground">{card.sub}</p>
             </div>
           </div>
@@ -119,9 +124,11 @@ export function KpiCards({ data }: KpiCardsProps) {
               </div>
               <div className="min-w-0">
                 <p className="eyebrow">{card.label}</p>
-                <p className={cn("tabular text-xl font-semibold tracking-tight sm:text-2xl", valueTone[card.tone])}>
-                  {card.value}
-                </p>
+                <CountUp
+                  value={card.rawValue}
+                  format={card.format}
+                  className={cn("tabular block text-xl font-semibold tracking-tight sm:text-2xl", valueTone[card.tone])}
+                />
                 <p className="truncate text-[11px] text-muted-foreground">{card.sub}</p>
               </div>
             </div>
