@@ -13,6 +13,7 @@ import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
@@ -54,23 +55,31 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelando, setCancelando] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Tarea: cancelar un pedido NUNCA lo elimina, solo cambia su estado a
   // "cancelled". La lista se refresca sola por la suscripción realtime que
   // ya existe en app/pedidos/page.tsx, así que no hace falta un callback
   // adicional aquí.
-  const handleCancelar = async () => {
+  //
+  // El confirm/alert nativos del navegador se reemplazaron por un modal
+  // propio (ConfirmDialog) y un mensaje inline: los dialogos nativos se ven
+  // identicos sin importar el diseño de la app y rompen la estetica.
+  const handleCancelarClick = () => {
     if (pedido.estado === "cancelled") return;
-    const confirmado = window.confirm(
-      `¿Cancelar el pedido ${pedido.id_plataforma}? El pedido no se eliminará, solo cambiará su estado a Cancelado.`
-    );
-    if (!confirmado) return;
+    setErrorMsg(null);
+    setConfirmOpen(true);
+  };
+
+  const confirmarCancelar = async () => {
     setCancelando(true);
     try {
       await cancelarPedido(pedido.id);
+      setConfirmOpen(false);
     } catch (err) {
       console.error("No se pudo cancelar el pedido:", err);
-      window.alert("No se pudo cancelar el pedido. Intenta nuevamente.");
+      setErrorMsg("No se pudo cancelar el pedido. Intenta nuevamente.");
     } finally {
       setCancelando(false);
     }
@@ -105,15 +114,29 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           </div>
 
           {pedido.estado !== "cancelled" && (
-            <button
-              onClick={handleCancelar}
-              disabled={cancelando}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
-            >
-              {cancelando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
-              Cancelar pedido
-            </button>
+            <div className="mt-3">
+              <button
+                onClick={handleCancelarClick}
+                disabled={cancelando}
+                className="btn-premium inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+              >
+                {cancelando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                Cancelar pedido
+              </button>
+              {errorMsg && <p className="mt-1.5 text-xs text-red-600">{errorMsg}</p>}
+            </div>
           )}
+
+          <ConfirmDialog
+            open={confirmOpen}
+            title={`¿Cancelar el pedido ${pedido.id_plataforma}?`}
+            description="El pedido no se eliminará, solo cambiará su estado a Cancelado."
+            confirmLabel="Cancelar pedido"
+            danger
+            loading={cancelando}
+            onConfirm={confirmarCancelar}
+            onCancel={() => setConfirmOpen(false)}
+          />
 
           <div className="mt-4">
             <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -151,7 +174,12 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           <h4 className="mt-4 mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <Camera className="h-3 w-3" /> Evidencias de empaque
           </h4>
-          {loading ? <p className="text-xs text-muted-foreground">Cargando...</p> : evidencias.length > 0 ? (
+          {loading ? (
+            <div className="flex gap-2">
+              <div className="skeleton h-16 w-16 rounded-lg" />
+              <div className="skeleton h-16 w-16 rounded-lg" />
+            </div>
+          ) : evidencias.length > 0 ? (
             <div className="flex flex-wrap gap-2">
               {evidencias.map((ev) => (
                 <a key={ev.id} href={getPublicUrl("evidencias", ev.url)} target="_blank" rel="noopener noreferrer"
@@ -168,7 +196,12 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
             <FileText className="h-3 w-3" /> Documentos tributarios
           </h4>
-          {loading ? <p className="text-xs text-muted-foreground">Cargando...</p> : documentos.length > 0 ? (
+          {loading ? (
+            <div className="space-y-2">
+              <div className="skeleton h-10" />
+              <div className="skeleton h-10" />
+            </div>
+          ) : documentos.length > 0 ? (
             <div className="space-y-2">
               {documentos.map((doc) => (
                 <a key={doc.id} href={getPublicUrl("documentos", doc.url)} target="_blank" rel="noopener noreferrer"
