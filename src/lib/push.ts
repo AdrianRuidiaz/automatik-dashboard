@@ -7,13 +7,18 @@ import { supabase } from "./supabase";
 // necesita a plena vista para poder suscribirse.
 const VAPID_PUBLIC_KEY = "BLM9GbYEEC-kler9ih3cLWdSJQmLU_yX9-ATifLEXG9pNImgi0Onqo4j_gADtRRpAi3pkEer64B_2C1OLjzTspQ";
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): BufferSource {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
   const rawData = atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
+  // El tipado DOM mas reciente parametriza Uint8Array<ArrayBufferLike> y
+  // eso ya no encaja con BufferSource (que exige ArrayBuffer, no
+  // SharedArrayBuffer) -- se castea explicito porque en tiempo de
+  // ejecucion siempre es un ArrayBuffer normal (viene de `new
+  // Uint8Array(length)`), el conflicto es solo de tipos.
+  return outputArray.buffer as ArrayBuffer;
 }
 
 export function pushSoportado(): boolean {
