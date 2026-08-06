@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut, ChevronDown, Building2 } from "lucide-react";
+import { Zap, LogOut, ChevronDown, Building2, Menu, X } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -88,9 +88,10 @@ function ClienteSwitcher() {
 
 export function Navbar() {
   const pathname = usePathname();
-  const { rol, usuario, esSuperAdmin, setVista, signOut } = useRole();
+  const { rol, usuario, esSuperAdmin, setVista, signOut, clienteNombre, clientesDisponibles, clienteId, setCliente } = useRole();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -99,6 +100,10 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
+
+  // Cierra el panel mobile al navegar, para no dejarlo abierto tapando la
+  // pagina de destino.
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (!rol) {
     return (
@@ -138,8 +143,8 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Nav links */}
-        <div className="flex items-center gap-1">
+        {/* Nav links: desktop */}
+        <div className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -162,8 +167,8 @@ export function Navbar() {
           })}
         </div>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
+        {/* Right side: desktop */}
+        <div className="hidden items-center gap-3 md:flex">
           {esSuperAdmin && <ClienteSwitcher />}
 
           {esSuperAdmin ? (
@@ -202,7 +207,7 @@ export function Navbar() {
             </span>
           )}
 
-          <div className="hidden items-center gap-2 sm:flex">
+          <div className="flex items-center gap-2">
             <span className="max-w-[120px] truncate text-xs text-white/40">{usuario?.nombre}</span>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white shadow-lg shadow-violet-500/20">
               {usuario ? iniciales(usuario.nombre) : "?"}
@@ -217,8 +222,109 @@ export function Navbar() {
             <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
+
+        {/* Hamburguesa: mobile */}
+        <button
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={mobileOpen}
+          className="btn-premium flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-white/70 transition-colors hover:border-amber-400/20 hover:text-white/90 md:hidden"
+        >
+          {mobileOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+        </button>
       </div>
       <div className="gold-line" />
+
+      {/* Panel mobile: agrupa navegacion, cliente (super_admin), vista de
+          rol y sesion en un solo desplegable, en vez de comprimir todo en
+          la barra como pasaba antes en pantallas angostas. */}
+      {mobileOpen && (
+        <div className="animate-in-soft border-b border-white/[0.06] bg-[hsl(230,15%,7%)]/98 backdrop-blur-xl md:hidden">
+          <div className="mx-auto max-w-7xl space-y-1 px-4 py-3">
+            {navItems.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                    active ? "bg-amber-400/10 text-amber-400" : "text-white/70 hover:bg-white/[0.04] hover:text-white/90"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+
+            {esSuperAdmin && clientesDisponibles.length > 0 && (
+              <>
+                <div className="my-2 h-px bg-white/[0.06]" />
+                <p className="px-3 text-[10px] font-medium uppercase tracking-wider text-white/40">Cliente</p>
+                <div className="mt-1 flex flex-col gap-0.5">
+                  {clientesDisponibles.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setCliente(c.id)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                        clienteId === c.id ? "bg-amber-400/10 text-amber-400" : "text-white/70 hover:bg-white/[0.04] hover:text-white/90"
+                      )}
+                    >
+                      <Building2 className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{c.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="my-2 h-px bg-white/[0.06]" />
+
+            {esSuperAdmin ? (
+              <>
+                <p className="px-3 text-[10px] font-medium uppercase tracking-wider text-white/40">Vista</p>
+                <div className="mt-1 flex flex-col gap-0.5">
+                  {VISTAS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setVista(r)}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                        rol === r ? "bg-amber-400/10 text-amber-400" : "text-white/70 hover:bg-white/[0.04] hover:text-white/90"
+                      )}
+                    >
+                      <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[r])} />
+                      {ROL_LABELS[r]}
+                    </button>
+                  ))}
+                </div>
+                <div className="my-2 h-px bg-white/[0.06]" />
+              </>
+            ) : (
+              <div className="flex items-center gap-2 px-3 py-2 text-sm text-white/70">
+                <span className={cn("h-1.5 w-1.5 rounded-full", ROL_COLORS[rol])} />
+                {ROL_LABELS[rol]}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-2 px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white shadow-lg shadow-violet-500/20">
+                  {usuario ? iniciales(usuario.nombre) : "?"}
+                </div>
+                <span className="truncate text-sm text-white/70">{usuario?.nombre}</span>
+              </div>
+              <button
+                onClick={() => signOut()}
+                className="btn-premium flex shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/60 transition-colors hover:border-red-400/30 hover:text-red-400"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Salir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
