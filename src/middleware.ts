@@ -8,6 +8,16 @@ const PUBLIC_PATHS = [
   "/auth/set-password",
   "/api/admin/bootstrap-status",
   "/api/admin/bootstrap",
+  // PWA: manifest, service worker e iconos deben poder pedirse sin sesion.
+  // Muchos navegadores fetchean manifest.json/sw.js sin enviar cookies aunque
+  // el usuario SI este logueado, asi que esto no es solo para logged-out --
+  // sin esta excepcion la app nunca se detecta como instalable.
+  "/manifest.json",
+  "/sw.js",
+  "/icon",
+  "/apple-icon",
+  "/icon-192",
+  "/icon-512",
 ];
 
 export async function middleware(request: NextRequest) {
