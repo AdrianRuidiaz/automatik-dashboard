@@ -21,6 +21,12 @@ const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 interface OrdersTableProps { pedidos: Pedido[]; }
 
+// Etiqueta "3x Producto (SKU: ABC)" usada tanto en las exportaciones como
+// en cualquier resumen de texto plano de los items de un pedido.
+function itemLabel(i: { quantity: number; title: string; sku?: string | null }) {
+  return `${i.quantity}x ${i.title}${i.sku ? ` (SKU: ${i.sku})` : ""}`;
+}
+
 // Exporta la lista de pedidos que se le pase (ya filtrada/buscada por la
 // tabla) a un CSV descargable. Todo se genera en el navegador, no pega a
 // ningun backend.
@@ -36,7 +42,7 @@ function exportarPedidosCSV(pedidos: Pedido[]) {
     p.cliente_nombre ?? "",
     p.total_pagado,
     ESTADO_LABELS[p.estado] ?? p.estado,
-    (p.items ?? []).map((i) => `${i.quantity}x ${i.title}`).join(" | "),
+    (p.items ?? []).map(itemLabel).join(" | "),
     p.etiqueta_url ? "Si" : "No",
   ]);
 
@@ -64,7 +70,7 @@ function exportarPedidosXLSX(pedidos: Pedido[]) {
     "Cliente": p.cliente_nombre ?? "",
     "Total": p.total_pagado,
     "Estado": ESTADO_LABELS[p.estado] ?? p.estado,
-    "Items": (p.items ?? []).map((i) => `${i.quantity}x ${i.title}`).join(" | "),
+    "Items": (p.items ?? []).map(itemLabel).join(" | "),
     "Etiqueta": p.etiqueta_url ? "Si" : "No",
   }));
 
@@ -197,7 +203,11 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
               <div className="space-y-1">
                 {pedido.items.map((item, i) => (
                   <div key={i} className="flex items-start justify-between gap-2 text-xs">
-                    <span className="flex-1"><span className="mr-1 rounded bg-background px-1.5 py-0.5 text-[10px] border border-border">x{item.quantity}</span>{item.title}</span>
+                    <span className="flex-1">
+                      <span className="mr-1 rounded bg-background px-1.5 py-0.5 text-[10px] border border-border">x{item.quantity}</span>
+                      {item.title}
+                      {item.sku && <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">SKU: {item.sku}</span>}
+                    </span>
                     <span className="text-muted-foreground whitespace-nowrap">{formatCLP(item.unit_price)}</span>
                   </div>
                 ))}
