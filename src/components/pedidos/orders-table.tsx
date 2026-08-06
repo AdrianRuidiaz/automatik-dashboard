@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2, PackageX } from "lucide-react";
+import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2, PackageX, UserCheck } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos, cancelarPedido } from "@/lib/api";
 import { supabase } from "@/lib/supabase";
+import { useRole } from "@/lib/role-context";
 import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
@@ -51,7 +53,51 @@ function exportarPedidosCSV(pedidos: Pedido[]) {
   URL.revokeObjectURL(url);
 }
 
+// Mismo dato que el CSV pero como .xlsx real (SheetJS), con anchos de
+// columna, formato moneda en Total, autofiltro y encabezado congelado --
+// para que se sienta como una planilla de verdad y no un volcado plano.
+function exportarPedidosXLSX(pedidos: Pedido[]) {
+  const filas = pedidos.map((p) => ({
+    "N° pedido": p.id_plataforma,
+    "Plataforma": p.plataforma,
+    "Fecha": p.fecha_pedido ? formatFechaCorta(p.fecha_pedido) : "",
+    "Cliente": p.cliente_nombre ?? "",
+    "Total": p.total_pagado,
+    "Estado": ESTADO_LABELS[p.estado] ?? p.estado,
+    "Items": (p.items ?? []).map((i) => `${i.quantity}x ${i.title}`).join(" | "),
+    "Etiqueta": p.etiqueta_url ? "Si" : "No",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(filas);
+
+  ws["!cols"] = [
+    { wch: 14 }, // N° pedido
+    { wch: 10 }, // Plataforma
+    { wch: 12 }, // Fecha
+    { wch: 24 }, // Cliente
+    { wch: 12 }, // Total
+    { wch: 12 }, // Estado
+    { wch: 50 }, // Items
+    { wch: 10 }, // Etiqueta
+  ];
+
+  // Formato moneda (CLP, sin decimales) solo en la columna Total (indice 4).
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  for (let row = range.s.r + 1; row <= range.e.r; row++) {
+    const cellRef = XLSX.utils.encode_cell({ r: row, c: 4 });
+    if (ws[cellRef]) ws[cellRef].z = '"$"#,##0';
+  }
+
+  ws["!autofilter"] = { ref: ws["!ref"] || "A1" };
+  ws["!views"] = [{ state: "frozen", ySplit: 1 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+  XLSX.writeFile(wb, `pedidos_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 function OrderDetail({ pedido }: { pedido: Pedido }) {
+  const { usuario } = useRole();
   const [archivos, setArchivos] = useState<Archivo[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelando, setCancelando] = useState(false);
@@ -75,7 +121,7 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   const confirmarCancelar = async () => {
     setCancelando(true);
     try {
-      await cancelarPedido(pedido.id);
+      await cancelarPedido(pedido.id, usuario?.rolId ?? null);
       setConfirmOpen(false);
     } catch (err) {
       console.error("No se pudo cancelar el pedido:", err);
@@ -91,6 +137,10 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
 
   const evidencias = archivos.filter(a => a.tipo === "evidencia_empaque");
   const documentos = archivos.filter(a => a.tipo === "boleta" || a.tipo === "factura" || a.tipo === "nota_credito");
+
+  // Igual que en el historial del empacador: alcanza con un nombre por
+  // pedido (todas las fotos suelen salir de la misma sesion de empaque).
+  const empacadoPor = evidencias.find((e) => e.subido_por_usuario?.nombre)?.subido_por_usuario?.nombre;
 
   const getPublicUrl = (bucket: string, path: string) => {
     const { data } = supabase.storage.from(bucket).getPublicUrl(path);
@@ -127,16 +177,17 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
             </div>
           )}
 
-          <ConfirmDialog
-            open={confirmOpen}
-            title={`¿Cancelar el pedido ${pedido.id_plataforma}?`}
-            description="El pedido no se eliminará, solo cambiará su estado a Cancelado."
-            confirmLabel="Cancelar pedido"
-            danger
-            loading={cancelando}
-            onConfirm={confirmarCancelar}
-            onCancel={() => setConfirmOpen(false)}
-          />
+          {/* Tarea: trazabilidad de cancelacion. cancelado_por_usuario viene
+              embebido desde fetchPedidos (join con usuarios_roles); si un
+              pedido fue cancelado antes de que existiera esta columna,
+              simplemente no se muestra nada aca. */}
+          {pedido.estado === "cancelled" && pedido.cancelado_por_usuario && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Ban className="h-3.5 w-3.5 shrink-0 text-red-500" />
+              Cancelado por <span className="font-medium text-foreground">{pedido.cancelado_por_usuario.nombre}</span>
+              {pedido.cancelado_en && <> el {formatFechaLarga(pedido.cancelado_en)}</>}
+            </p>
+          )}
 
           <div className="mt-4">
             <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -180,15 +231,23 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
               <div className="skeleton h-16 w-16 rounded-lg" />
             </div>
           ) : evidencias.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {evidencias.map((ev) => (
-                <a key={ev.id} href={getPublicUrl("evidencias", ev.url)} target="_blank" rel="noopener noreferrer"
-                  className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border bg-secondary">
-                  <img src={getPublicUrl("evidencias", ev.url)} alt={ev.nombre_archivo ?? "Evidencia"}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                </a>
-              ))}
-            </div>
+            <>
+              {empacadoPor && (
+                <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                  Subido por <span className="font-medium text-foreground">{empacadoPor}</span>
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {evidencias.map((ev) => (
+                  <a key={ev.id} href={getPublicUrl("evidencias", ev.url)} target="_blank" rel="noopener noreferrer"
+                    className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border bg-secondary">
+                    <img src={getPublicUrl("evidencias", ev.url)} alt={ev.nombre_archivo ?? "Evidencia"}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  </a>
+                ))}
+              </div>
+            </>
           ) : <p className="text-xs text-muted-foreground">Sin evidencias</p>}
         </div>
 
@@ -242,6 +301,19 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
   const [fechaHasta, setFechaHasta] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  // Cierra el menu de exportar al hacer clic afuera, como cualquier
+  // dropdown normal (si no, queda abierto colgando sobre la tabla).
+  useEffect(() => {
+    if (!exportOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setExportOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [exportOpen]);
 
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
@@ -389,14 +461,32 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
             <X className="h-3 w-3" /> Limpiar
           </button>
         )}
-        <button
-          onClick={() => exportarPedidosCSV(filtered)}
-          disabled={filtered.length === 0}
-          title={filtered.length === 0 ? "No hay pedidos para exportar" : `Exportar ${filtered.length} pedido${filtered.length === 1 ? "" : "s"} a CSV`}
-          className="btn-premium ml-auto inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground shrink-0 disabled:opacity-40 disabled:hover:text-muted-foreground"
-        >
-          <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
-        </button>
+        <div ref={exportRef} className="relative ml-auto shrink-0">
+          <button
+            onClick={() => setExportOpen((v) => !v)}
+            disabled={filtered.length === 0}
+            title={filtered.length === 0 ? "No hay pedidos para exportar" : `Exportar ${filtered.length} pedido${filtered.length === 1 ? "" : "s"}`}
+            className="btn-premium inline-flex items-center gap-1 rounded-md border border-input px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground"
+          >
+            <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
+          </button>
+          {exportOpen && (
+            <div className="absolute right-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg animate-in slide-in-from-top-1 duration-150">
+              <button
+                onClick={() => { exportarPedidosCSV(filtered); setExportOpen(false); }}
+                className="block w-full px-3 py-2 text-left text-xs hover:bg-secondary"
+              >
+                CSV
+              </button>
+              <button
+                onClick={() => { exportarPedidosXLSX(filtered); setExportOpen(false); }}
+                className="block w-full px-3 py-2 text-left text-xs hover:bg-secondary"
+              >
+                Excel (.xlsx)
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Panel de filtros expandible */}
