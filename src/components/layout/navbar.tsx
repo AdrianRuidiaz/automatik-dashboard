@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2, Download } from "lucide-react";
+import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2, Download, Settings } from "lucide-react";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -430,6 +430,19 @@ export function Navbar() {
             </div>
           </div>
 
+          <Link
+            href="/configuracion"
+            title="Configuración"
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
+              pathname === "/configuracion"
+                ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+                : "border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-amber-400/20 hover:text-white/90"
+            )}
+          >
+            <Settings className="h-3.5 w-3.5" />
+          </Link>
+
           <button
             onClick={() => signOut()}
             title="Cerrar sesión"
@@ -476,6 +489,16 @@ export function Navbar() {
             <div className="my-2 h-px bg-white/[0.06]" />
             <InstalarAppBoton variant="mobile" />
             <NotificacionesToggle variant="mobile" />
+            <Link
+              href="/configuracion"
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                pathname === "/configuracion" ? "bg-amber-400/10 text-amber-400" : "text-white/70 hover:bg-white/[0.04] hover:text-white/90"
+              )}
+            >
+              <Settings className="h-4 w-4" />
+              Configuración
+            </Link>
 
             {esSuperAdmin && clientesDisponibles.length > 0 && (
               <>
