@@ -232,11 +232,14 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           </div>
         )}
 
+        {/* Sin el atributo "capture": asi el navegador movil ofrece el
+            picker nativo con ambas opciones (Camara / Galeria) en vez de
+            abrir la camara trasera directo sin dar chance de elegir una
+            foto ya tomada. accept="image/*" + multiple se mantienen igual. */}
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
-          capture="environment"
           multiple
           className="hidden"
           onChange={addFoto}
