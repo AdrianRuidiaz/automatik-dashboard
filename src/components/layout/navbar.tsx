@@ -6,7 +6,15 @@ import { Zap, LogOut, ChevronDown, Building2, Menu, X, Bell, Loader2, Download }
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { pushSoportado, obtenerSuscripcionActual, activarNotificaciones, desactivarNotificaciones } from "@/lib/push";
+import {
+  pushSoportado,
+  obtenerSuscripcionActual,
+  activarNotificaciones,
+  desactivarNotificaciones,
+  obtenerPreferenciasPush,
+  actualizarPreferenciasPush,
+  type PreferenciasPush,
+} from "@/lib/push";
 import { useInstallPrompt } from "@/lib/pwa-install";
 import { useState, useRef, useEffect } from "react";
 
@@ -92,29 +100,76 @@ function ClienteSwitcher() {
 // y hay una llave publica VAPID configurada (pushSoportado()) -- por eso el
 // estado arranca "oculto" y un efecto lo revela despues del montaje, para
 // no depender de APIs de navegador durante el render de servidor.
+//
+// Tarea #73: ademas de activar/desactivar, una vez suscrito el usuario
+// puede elegir por separado si quiere recibir "pedido nuevo" y/o "urgente"
+// (vence hoy). Desktop lo muestra como panel desplegable junto al icono;
+// mobile lo muestra inline debajo del boton principal.
 function NotificacionesToggle({ variant }: { variant: "desktop" | "mobile" }) {
   const [capaz, setCapaz] = useState(false);
   const [estado, setEstado] = useState<"off" | "on" | "loading">("off");
   const [msg, setMsg] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<PreferenciasPush>({ pedidoNuevo: true, urgente: true });
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setCapaz(pushSoportado());
     obtenerSuscripcionActual()
-      .then((sub) => setEstado(sub ? "on" : "off"))
+      .then(async (sub) => {
+        setEstado(sub ? "on" : "off");
+        if (sub) {
+          const p = await obtenerPreferenciasPush();
+          if (p) setPrefs(p);
+        }
+      })
       .catch(() => setEstado("off"));
   }, []);
 
-  const toggle = async () => {
-    if (estado === "loading") return;
+  useEffect(() => {
+    if (variant !== "desktop") return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [variant]);
+
+  const activar = async () => {
     setMsg(null);
-    const activando = estado !== "on";
     setEstado("loading");
-    const resultado = activando ? await activarNotificaciones() : await desactivarNotificaciones();
+    const resultado = await activarNotificaciones();
     if (resultado.ok) {
-      setEstado(activando ? "on" : "off");
+      setEstado("on");
+      const p = await obtenerPreferenciasPush();
+      if (p) setPrefs(p);
     } else {
-      setEstado(activando ? "off" : "on");
+      setEstado("off");
       setMsg(resultado.error ?? "No se pudo actualizar");
+      setTimeout(() => setMsg(null), 4000);
+    }
+  };
+
+  const desactivar = async () => {
+    setMsg(null);
+    setEstado("loading");
+    const resultado = await desactivarNotificaciones();
+    setEstado(resultado.ok ? "off" : "on");
+    if (!resultado.ok) {
+      setMsg(resultado.error ?? "No se pudo actualizar");
+      setTimeout(() => setMsg(null), 4000);
+    }
+    setOpen(false);
+  };
+
+  const cambiarPref = async (campo: keyof PreferenciasPush, valor: boolean) => {
+    const anterior = prefs;
+    const nuevo = { ...prefs, [campo]: valor };
+    setPrefs(nuevo);
+    const resultado = await actualizarPreferenciasPush(nuevo);
+    if (!resultado.ok) {
+      setPrefs(anterior);
+      setMsg(resultado.error ?? "No se pudo guardar");
       setTimeout(() => setMsg(null), 4000);
     }
   };
@@ -125,32 +180,87 @@ function NotificacionesToggle({ variant }: { variant: "desktop" | "mobile" }) {
     return (
       <>
         <button
-          onClick={toggle}
+          onClick={estado === "on" ? desactivar : activar}
           disabled={estado === "loading"}
           className="btn-premium flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm text-white/70 transition-colors hover:bg-white/[0.04] hover:text-white/90 disabled:opacity-60"
         >
           {estado === "loading" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className={cn("h-4 w-4", estado === "on" && "text-amber-400")} />}
-          {estado === "on" ? "Notificaciones activas" : "Activar notificaciones de pedidos nuevos"}
+          {estado === "on" ? "Notificaciones activas" : "Activar notificaciones"}
         </button>
+        {estado === "on" && (
+          <div className="ml-1 mt-1 space-y-0.5 border-l border-white/[0.06] pl-3">
+            <label className="flex items-center gap-2 py-1.5 text-xs text-white/60">
+              <input
+                type="checkbox"
+                checked={prefs.pedidoNuevo}
+                onChange={(e) => cambiarPref("pedidoNuevo", e.target.checked)}
+                className="h-3.5 w-3.5 accent-amber-400"
+              />
+              Pedido nuevo
+            </label>
+            <label className="flex items-center gap-2 py-1.5 text-xs text-white/60">
+              <input
+                type="checkbox"
+                checked={prefs.urgente}
+                onChange={(e) => cambiarPref("urgente", e.target.checked)}
+                className="h-3.5 w-3.5 accent-amber-400"
+              />
+              Urgente (vence hoy)
+            </label>
+          </div>
+        )}
         {msg && <p className="px-3 text-xs text-red-400">{msg}</p>}
       </>
     );
   }
 
   return (
-    <button
-      onClick={toggle}
-      disabled={estado === "loading"}
-      title={msg || (estado === "on" ? "Notificaciones activas — click para desactivar" : "Avisar cuando entra un pedido nuevo")}
-      className={cn(
-        "btn-premium flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
-        estado === "on"
-          ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
-          : "border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-amber-400/20 hover:text-white/90"
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => (estado === "on" ? setOpen((v) => !v) : activar())}
+        disabled={estado === "loading"}
+        title={msg || (estado === "on" ? "Preferencias de notificaciones" : "Avisar cuando entra un pedido nuevo")}
+        className={cn(
+          "btn-premium flex h-8 w-8 items-center justify-center rounded-lg border transition-colors",
+          estado === "on"
+            ? "border-amber-400/30 bg-amber-400/10 text-amber-400"
+            : "border-white/[0.06] bg-white/[0.04] text-white/50 hover:border-amber-400/20 hover:text-white/90"
+        )}
+      >
+        {estado === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
+      </button>
+      {open && estado === "on" && (
+        <div className="absolute right-0 top-full z-50 mt-2 w-60 overflow-hidden rounded-xl border border-white/[0.08] bg-[hsl(230,14%,11%)] p-3 shadow-2xl shadow-black/40 animate-in-soft">
+          <p className="eyebrow mb-2">Notificaciones</p>
+          <label className="flex items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-sm text-white/70 transition-colors hover:bg-white/[0.04]">
+            Pedido nuevo
+            <input
+              type="checkbox"
+              checked={prefs.pedidoNuevo}
+              onChange={(e) => cambiarPref("pedidoNuevo", e.target.checked)}
+              className="h-4 w-4 accent-amber-400"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-sm text-white/70 transition-colors hover:bg-white/[0.04]">
+            Urgente (vence hoy)
+            <input
+              type="checkbox"
+              checked={prefs.urgente}
+              onChange={(e) => cambiarPref("urgente", e.target.checked)}
+              className="h-4 w-4 accent-amber-400"
+            />
+          </label>
+          <div className="my-2 h-px bg-white/[0.06]" />
+          <button
+            onClick={desactivar}
+            className="w-full rounded-lg px-1 py-1.5 text-left text-xs text-red-400/80 transition-colors hover:bg-red-400/10 hover:text-red-400"
+          >
+            Desactivar notificaciones
+          </button>
+          {msg && <p className="mt-1 px-1 text-xs text-red-400">{msg}</p>}
+        </div>
       )}
-    >
-      {estado === "loading" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bell className="h-3.5 w-3.5" />}
-    </button>
+    </div>
   );
 }
 

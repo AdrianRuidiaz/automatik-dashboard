@@ -100,3 +100,44 @@ export async function desactivarNotificaciones(): Promise<ResultadoPush> {
     return { ok: false, error: "No se pudo desactivar las notificaciones." };
   }
 }
+
+// Tarea #73: notificaciones acotadas a 2 categorias (pedido nuevo / urgente),
+// configurables por suscripcion (dispositivo/navegador). Las columnas
+// notif_pedido_nuevo / notif_urgente en push_subscriptions arrancan en
+// `true` por default, asi que un dispositivo recien suscrito recibe ambas
+// categorias hasta que el usuario las desmarque.
+export interface PreferenciasPush {
+  pedidoNuevo: boolean;
+  urgente: boolean;
+}
+
+const PREFERENCIAS_DEFAULT: PreferenciasPush = { pedidoNuevo: true, urgente: true };
+
+export async function obtenerPreferenciasPush(): Promise<PreferenciasPush | null> {
+  const sub = await obtenerSuscripcionActual();
+  if (!sub) return null;
+  const { data, error } = await supabase.rpc("obtener_preferencias_push", { p_endpoint: sub.endpoint });
+  if (error) {
+    console.error("No se pudieron leer las preferencias de notificaciones:", error);
+    return PREFERENCIAS_DEFAULT;
+  }
+  const fila = Array.isArray(data) ? data[0] : null;
+  if (!fila) return PREFERENCIAS_DEFAULT;
+  return { pedidoNuevo: fila.notif_pedido_nuevo, urgente: fila.notif_urgente };
+}
+
+export async function actualizarPreferenciasPush(prefs: PreferenciasPush): Promise<ResultadoPush> {
+  const sub = await obtenerSuscripcionActual();
+  if (!sub) return { ok: false, error: "No hay una suscripción activa en este dispositivo" };
+
+  const { error } = await supabase.rpc("actualizar_preferencias_push", {
+    p_endpoint: sub.endpoint,
+    p_notif_pedido_nuevo: prefs.pedidoNuevo,
+    p_notif_urgente: prefs.urgente,
+  });
+  if (error) {
+    console.error("No se pudieron guardar las preferencias de notificaciones:", error);
+    return { ok: false, error: "No se pudieron guardar las preferencias." };
+  }
+  return { ok: true };
+}
