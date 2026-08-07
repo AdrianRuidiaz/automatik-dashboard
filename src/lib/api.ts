@@ -256,3 +256,51 @@ export async function marcarPedidoEmpacado(pedidoId: string): Promise<MarcarEmpa
     }
     return { ok: true };
 }
+
+// ---------------------------------------------------------------------------
+// Configuracion > Empresa. public.clientes solo tiene UPDATE via RLS para
+// super_admin (ver policy "super_admin gestiona clientes"), asi que un admin
+// de tenant no puede editar el perfil de su propia empresa directo con
+// .update(). actualizar_perfil_empresa es un RPC SECURITY DEFINER que valida
+// a mano (super_admin siempre, admin solo sobre su propio cliente_id) y solo
+// deja tocar nombre/logo_url/config -- nunca plan ni activo.
+// ---------------------------------------------------------------------------
+export interface PerfilEmpresa {
+    id: string;
+    nombre: string;
+    logo_url: string | null;
+    rut: string;
+    direccion: string;
+    telefono: string;
+}
+
+export async function fetchPerfilEmpresa(clienteId: string): Promise<PerfilEmpresa | null> {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("id, nombre, logo_url, config")
+      .eq("id", clienteId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    const config = (data.config as Record<string, string>) || {};
+    return {
+          id: data.id,
+          nombre: data.nombre,
+          logo_url: data.logo_url,
+          rut: config.rut || "",
+          direccion: config.direccion || "",
+          telefono: config.telefono || "",
+    };
+}
+
+export async function actualizarPerfilEmpresa(params: {
+    p_cliente_id: string;
+    p_nombre: string;
+    p_logo_url?: string | null;
+    p_rut?: string | null;
+    p_direccion?: string | null;
+    p_telefono?: string | null;
+}): Promise<void> {
+    const { error } = await supabase.rpc("actualizar_perfil_empresa", params);
+    if (error) throw error;
+}
