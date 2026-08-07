@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { Navbar } from "./navbar";
 import { useRole } from "@/lib/role-context";
 import type { RolUsuario } from "@/lib/types";
+import { pushSoportado, obtenerSuscripcionActual, activarNotificaciones } from "@/lib/push";
 
 interface Props {
   children: ((rol: RolUsuario) => React.ReactNode) | React.ReactNode;
@@ -10,6 +12,25 @@ interface Props {
 
 export function AppShell({ children }: Props) {
   const { rol, listo, signOut } = useRole();
+
+  // Notificaciones activas por defecto: antes habia que abrir la campanita
+  // del navbar (ya no existe, ver Configuracion > Notificaciones) y
+  // activarlas a mano. Ahora, apenas hay sesion con un rol activo, se
+  // intenta suscribir sola -- pero solo si el navegador todavia no decidio
+  // nada (Notification.permission === "default"). Si el usuario ya dijo
+  // que no ("denied") o ya esta suscrito ("granted" + hay suscripcion), no
+  // se le vuelve a preguntar: el permiso del navegador es la unica fuente
+  // de verdad de si ya se pregunto, asi que esto no re-molesta en cada
+  // carga de pagina una vez que la persona ya respondio.
+  useEffect(() => {
+    if (!listo || !rol) return;
+    if (!pushSoportado()) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "default") return;
+
+    obtenerSuscripcionActual().then((sub) => {
+      if (!sub) activarNotificaciones();
+    });
+  }, [listo, rol]);
 
   return (
     <div className="relative min-h-screen">
