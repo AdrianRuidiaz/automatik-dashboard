@@ -263,7 +263,6 @@ function SeccionNotificaciones() {
           </label>
           <button
             onClick={desactivar}
-            disabled={estado === "loading"}
             className="mt-2 rounded-lg px-3 py-1.5 text-xs text-red-400/80 transition-colors hover:bg-red-400/10 hover:text-red-400"
           >
             Desactivar notificaciones en este dispositivo
