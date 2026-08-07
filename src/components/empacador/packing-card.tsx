@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Camera, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2, PackageCheck, User, Timer } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Images, Plus, X, Check, Clock, AlertTriangle, CheckCircle, Loader2, PackageCheck, User, Timer } from "lucide-react";
 import { cn, formatFechaCorta } from "@/lib/utils";
 import { uploadArchivo, registrarArchivo, marcarPedidoEmpacado } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
@@ -57,14 +57,32 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
   const [marking, setMarking] = useState(false);
   const [packed, setPacked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  // Dos inputs separados en vez de uno solo: el picker nativo con solo
+  // accept="image/*" no ofrece de forma confiable ambas opciones (camara +
+  // galeria) en todos los navegadores/dispositivos -- en algunos (sobre
+  // todo con la app instalada como PWA) abre directo la galeria y no deja
+  // elegir tomar una foto nueva. Con capture="environment" en un input y
+  // sin capture en el otro, el resultado es siempre el mismo sin importar
+  // el navegador.
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuAbierto(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   const addFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     const nuevas = files.slice(0, MAX_FOTOS - fotos.length).map((f) => ({ file: f, preview: URL.createObjectURL(f) }));
     setFotos((prev) => [...prev, ...nuevas]);
     setError(null);
-    if (fileRef.current) fileRef.current.value = "";
+    e.target.value = "";
   };
 
   const removeFoto = (idx: number) => {
@@ -195,13 +213,32 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           ))}
 
           {fotos.length < MAX_FOTOS && !isDone && (
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-background text-muted-foreground active:bg-secondary"
-            >
-              <Plus className="h-5 w-5" />
-              <span className="text-[10px]">Foto {fotos.length + 1}</span>
-            </button>
+            <div ref={menuRef} className="relative">
+              <button
+                onClick={() => setMenuAbierto((v) => !v)}
+                className="flex h-20 w-20 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-background text-muted-foreground active:bg-secondary"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="text-[10px]">Foto {fotos.length + 1}</span>
+              </button>
+
+              {menuAbierto && (
+                <div className="absolute bottom-full left-0 z-20 mb-2 min-w-[160px] overflow-hidden rounded-xl border border-border bg-card shadow-2xl shadow-black/30">
+                  <button
+                    onClick={() => { setMenuAbierto(false); cameraRef.current?.click(); }}
+                    className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-secondary"
+                  >
+                    <Camera className="h-4 w-4 shrink-0 text-muted-foreground" /> Tomar foto
+                  </button>
+                  <button
+                    onClick={() => { setMenuAbierto(false); galleryRef.current?.click(); }}
+                    className="flex w-full items-center gap-2 border-t border-border px-3 py-2.5 text-left text-sm hover:bg-secondary"
+                  >
+                    <Images className="h-4 w-4 shrink-0 text-muted-foreground" /> Elegir de galería
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
@@ -232,12 +269,16 @@ export function PackingCard({ pedido, onConfirm }: PackingCardProps) {
           </div>
         )}
 
-        {/* Sin el atributo "capture": asi el navegador movil ofrece el
-            picker nativo con ambas opciones (Camara / Galeria) en vez de
-            abrir la camara trasera directo sin dar chance de elegir una
-            foto ya tomada. accept="image/*" + multiple se mantienen igual. */}
         <input
-          ref={fileRef}
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={addFoto}
+        />
+        <input
+          ref={galleryRef}
           type="file"
           accept="image/*"
           multiple
