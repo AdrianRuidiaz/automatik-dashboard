@@ -200,14 +200,20 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
               <Package className="h-3 w-3" /> Items
             </h4>
             {(pedido.items || []).length > 0 ? (
-              <div className="space-y-1">
+              <div className="space-y-2">
                 {pedido.items.map((item, i) => (
                   <div key={i} className="flex items-start justify-between gap-2 text-xs">
-                    <span className="flex-1">
-                      <span className="mr-1 rounded bg-background px-1.5 py-0.5 text-[10px] border border-border">x{item.quantity}</span>
-                      {item.title}
-                      {item.sku && <span className="ml-1.5 font-mono text-[10px] text-muted-foreground">SKU: {item.sku}</span>}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div>
+                        <span className="mr-1 rounded bg-background px-1.5 py-0.5 text-[10px] border border-border">x{item.quantity}</span>
+                        {item.title}
+                      </div>
+                      {item.sku && (
+                        <span className="mt-1 inline-block rounded border border-primary/30 bg-primary/10 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                          SKU: {item.sku}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-muted-foreground whitespace-nowrap">{formatCLP(item.unit_price)}</span>
                   </div>
                 ))}
