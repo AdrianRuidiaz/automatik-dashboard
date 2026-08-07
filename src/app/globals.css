@@ -50,9 +50,17 @@
     @apply bg-background text-foreground;
     font-family: var(--font-sans);
     font-feature-settings: "cv02","cv03","cv04","cv11";
+    /* Grano fino (film grain): textura SVG con feTurbulence, tileada a
+       180x180 y con el canal alpha bajado directo en el filtro (0.035) en
+       vez de usar opacity CSS -- background-image no soporta opacity por
+       capa, asi que el alpha va horneado en el propio SVG. Se pone antes
+       que los glows radiales para que quede debajo del halo ambar/morado
+       (el orden de la lista de background-image es de arriba/frente hacia
+       abajo/fondo). */
     background-image:
       radial-gradient(ellipse 80% 60% at 50% -10%, hsl(38 65% 58% / 0.04) 0%, transparent 60%),
-      radial-gradient(ellipse 50% 40% at 80% 100%, hsl(250 60% 50% / 0.03) 0%, transparent 50%);
+      radial-gradient(ellipse 50% 40% at 80% 100%, hsl(250 60% 50% / 0.03) 0%, transparent 50%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.035 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-attachment: fixed;
   }
 
