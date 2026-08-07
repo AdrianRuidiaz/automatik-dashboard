@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { RoleProvider } from "@/lib/role-context";
 import { PwaRegister } from "@/components/pwa-register";
+import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,6 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
+        {/* Aplica la clase .light (si el usuario la eligio en Configuracion
+            > Apariencia) antes del primer paint -- ver src/lib/theme.ts */}
+        <script dangerouslySetInnerHTML={{ __html: TEMA_INLINE_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <PwaRegister />
