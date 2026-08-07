@@ -13,7 +13,6 @@ const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   admin: [
     { label: "Dashboard", href: "/" },
     { label: "Pedidos", href: "/pedidos" },
-    { label: "Equipo", href: "/admin/usuarios" },
   ],
   vendedor: [
     { label: "Ventas", href: "/" },
@@ -158,12 +157,7 @@ export function Navbar() {
     );
   }
 
-  // Para super_admin, "Equipo" debe seguir accesible aunque este viendo la
-  // vista de vendedor/empacador (esas vistas no traen ese link).
-  const navItems =
-    esSuperAdmin && rol !== "admin"
-      ? [...NAV_ITEMS[rol], { label: "Equipo", href: "/admin/usuarios" }]
-      : NAV_ITEMS[rol];
+  const navItems = NAV_ITEMS[rol];
 
   return (
     <nav className="sticky top-0 z-50 border-b border-white/[0.06] bg-[hsl(230,15%,7%)]/80 backdrop-blur-xl">
