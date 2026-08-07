@@ -471,7 +471,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
 
       {/* Barra principal: busqueda + toggle filtros */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 rounded-md border border-input px-3 py-1.5 flex-1 min-w-0 max-w-xs">
+        <div className="flex items-center gap-2 rounded-lg border border-input px-3 py-1.5 flex-1 min-w-0 max-w-xs transition-colors focus-within:border-primary/40">
           <Search className="h-4 w-4 text-muted-foreground shrink-0" />
           <input placeholder="Buscar pedido, cliente..." value={globalFilter} onChange={(e) => setGlobalFilter(e.target.value)}
             className="min-w-0 flex-1 border-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
@@ -508,7 +508,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
             <Download className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Exportar</span>
           </button>
           {exportOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-md border border-border bg-card py-1 shadow-lg animate-in slide-in-from-top-1 duration-150">
+            <div className="absolute right-0 top-full z-10 mt-1 w-40 overflow-hidden rounded-xl border border-border/60 bg-card py-1 shadow-xl animate-in slide-in-from-top-1 duration-150">
               <button
                 onClick={() => { exportarPedidosCSV(filtered); setExportOpen(false); }}
                 className="block w-full px-3 py-2 text-left text-xs hover:bg-secondary"
@@ -528,7 +528,7 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
 
       {/* Panel de filtros expandible */}
       {showFilters && (
-        <div className="mb-4 rounded-lg border border-border bg-card p-3 space-y-3 animate-in slide-in-from-top-1 duration-200">
+        <div className="card-premium mb-4 p-3 space-y-3 animate-in slide-in-from-top-1 duration-200">
           {/* Plataforma */}
           <div>
             <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">Plataforma</p>
@@ -634,43 +634,49 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
         })}
       </div>
 
-      {/* Tabla: desktop */}
-      <div className="hidden overflow-x-auto -mx-4 md:block md:mx-0">
-        <div className="min-w-[640px] px-4 md:px-0">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((h) => (
-                    <th key={h.id} className="border-b border-border px-2 py-2 text-left text-xs font-normal text-muted-foreground whitespace-nowrap">
-                      {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <>
-                  <tr key={row.id} className="cursor-pointer border-b border-border hover:bg-secondary/50 transition-colors"
-                    onClick={() => toggleRow(row.original.id)}>
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-2 py-2.5">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
+      {/* Tabla: desktop. card-premium + encabezados "eyebrow" + row-hover
+          dorado -- mismo lenguaje visual que la tabla "Ultimos pedidos" del
+          dashboard. Esta es la tabla que mas se usa (el corazon de la app),
+          antes se veia plana (tabla suelta sin card, hover gris generico)
+          en comparacion con el resto de la interfaz. */}
+      <div className="hidden md:block">
+        <div className="card-premium overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] border-collapse text-sm">
+              <thead>
+                {table.getHeaderGroups().map((hg) => (
+                  <tr key={hg.id} className="border-b border-border bg-secondary/40">
+                    {hg.headers.map((h) => (
+                      <th key={h.id} className="eyebrow px-3 py-2.5 text-left font-medium whitespace-nowrap">
+                        {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
+                      </th>
                     ))}
                   </tr>
-                  {expandedRows.has(row.original.id) && (
-                    <tr key={row.id + "-d"}>
-                      <td colSpan={columns.length} className="border-b border-border p-0">
-                        <OrderDetail pedido={row.original} />
-                      </td>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <>
+                    <tr key={row.id} className="row-hover cursor-pointer border-b border-border last:border-0 hover:bg-secondary/40"
+                      onClick={() => toggleRow(row.original.id)}>
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-3 py-2.5">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
                     </tr>
-                  )}
-                </>
-              ))}
-            </tbody>
-          </table>
+                    {expandedRows.has(row.original.id) && (
+                      <tr key={row.id + "-d"}>
+                        <td colSpan={columns.length} className="border-b border-border p-0">
+                          <OrderDetail pedido={row.original} />
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -686,8 +692,8 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
           }
         </span>
         <div className="flex gap-1">
-          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="btn-premium rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Anterior</button>
-          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="btn-premium rounded border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Siguiente</button>
+          <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="btn-premium rounded-lg border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Anterior</button>
+          <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="btn-premium rounded-lg border border-input px-3 py-1 disabled:opacity-40 hover:bg-secondary">Siguiente</button>
         </div>
       </div>
     </div>
