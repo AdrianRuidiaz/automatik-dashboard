@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { User, Bell, Palette, Loader2, Check, Shield, Building2 } from "lucide-react";
+import { User, Bell, Palette, Loader2, Check, Shield, Building2, Users } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useRole } from "@/lib/role-context";
 import { useTema } from "@/lib/theme";
 import { supabase } from "@/lib/supabase";
 import { cn, formatFechaLarga } from "@/lib/utils";
 import { fetchPerfilEmpresa, actualizarPerfilEmpresa, uploadArchivo, type PerfilEmpresa } from "@/lib/api";
+import { EquipoManager } from "@/components/configuracion/equipo-manager";
 import {
   pushSoportado,
   obtenerSuscripcionActual,
@@ -18,16 +19,18 @@ import {
   type PreferenciasPush,
 } from "@/lib/push";
 
-type Seccion = "cuenta" | "seguridad" | "notificaciones" | "apariencia" | "empresa";
+type Seccion = "cuenta" | "seguridad" | "notificaciones" | "apariencia" | "empresa" | "equipo";
 
 export default function ConfiguracionPage() {
   const { rolReal } = useRole();
   const [seccion, setSeccion] = useState<Seccion>("cuenta");
 
-  // "Empresa" solo tiene sentido para quien administra el tenant -- un
-  // vendedor o empacador no deberia poder ver ni editar el nombre/logo/RUT
-  // del negocio. La autorizacion real vive en el RPC (actualizar_perfil_empresa),
-  // esto es solo para no mostrar una pestaña que igual les rebotaria.
+  // "Empresa" y "Equipo" solo tienen sentido para quien administra el
+  // tenant -- un vendedor o empacador no deberia poder ver ni editar el
+  // nombre/logo/RUT del negocio, ni invitar/quitar gente. La autorizacion
+  // real vive en el RPC (actualizar_perfil_empresa) y en los endpoints
+  // /api/admin/*, esto es solo para no mostrar pestañas que igual les
+  // rebotarian.
   const puedeVerEmpresa = rolReal === "admin" || rolReal === "super_admin";
 
   const secciones = useMemo(() => {
@@ -37,7 +40,10 @@ export default function ConfiguracionPage() {
       { id: "notificaciones", label: "Notificaciones", icon: Bell },
       { id: "apariencia", label: "Apariencia", icon: Palette },
     ];
-    if (puedeVerEmpresa) base.push({ id: "empresa", label: "Empresa", icon: Building2 });
+    if (puedeVerEmpresa) {
+      base.push({ id: "empresa", label: "Empresa", icon: Building2 });
+      base.push({ id: "equipo", label: "Equipo", icon: Users });
+    }
     return base;
   }, [puedeVerEmpresa]);
 
@@ -78,6 +84,7 @@ export default function ConfiguracionPage() {
             {seccion === "notificaciones" && <SeccionNotificaciones />}
             {seccion === "apariencia" && <SeccionApariencia />}
             {seccion === "empresa" && puedeVerEmpresa && <SeccionEmpresa />}
+            {seccion === "equipo" && puedeVerEmpresa && <EquipoManager />}
           </div>
         </div>
       </div>
