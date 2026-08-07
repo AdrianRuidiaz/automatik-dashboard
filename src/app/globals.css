@@ -286,3 +286,22 @@
   .bg-gold { background-color: hsl(var(--gold)); }
   .border-gold { border-color: hsl(var(--gold) / 0.2); }
 }
+
+/* ── Estados de pedido en tema claro ──
+   ESTADO_COLORS (src/lib/types.ts) usa texto pastel tipo -300 sobre
+   relleno /15 -- pensado para leerse sobre el fondo oscuro. Sobre el fondo
+   marfil de .light ese mismo texto casi no tenia contraste (se veia "muy
+   transparente"). Estas reglas re-tiñen los mismos pills subiendo el tono
+   del texto y del relleno, sin tocar types.ts ni EstadoBadge.
+   Van fuera de los @layer de Tailwind (unlayered) a proposito: las
+   utilities de Tailwind (@layer utilities, ej. text-amber-300) le ganan a
+   cualquier cosa en @layer components por orden de capa sin importar
+   especificidad -- un override adentro de @layer components nunca
+   alcanzaria a pisarlas. Fuera de cualquier capa, CSS "unlayered" siempre
+   gana sobre todo lo que esta dentro de una capa. */
+.light .pill[class*="text-slate-300"] { color: hsl(215 16% 32%); background-color: hsl(215 20% 90%); border-color: hsl(215 18% 76%); }
+.light .pill[class*="text-amber-300"] { color: hsl(32 75% 30%); background-color: hsl(38 75% 87%); border-color: hsl(38 60% 70%); }
+.light .pill[class*="text-emerald-300"] { color: hsl(155 55% 25%); background-color: hsl(155 50% 86%); border-color: hsl(155 42% 68%); }
+.light .pill[class*="text-teal-300"] { color: hsl(175 55% 23%); background-color: hsl(175 45% 85%); border-color: hsl(175 38% 66%); }
+.light .pill[class*="text-blue-300"] { color: hsl(215 65% 34%); background-color: hsl(215 60% 89%); border-color: hsl(215 48% 72%); }
+.light .pill[class*="text-red-300"] { color: hsl(0 62% 34%); background-color: hsl(0 58% 89%); border-color: hsl(0 45% 74%); }
