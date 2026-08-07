@@ -406,10 +406,31 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
       cell: ({ row }) => <span className="block max-w-[120px] md:max-w-[180px] truncate text-sm">{row.original.cliente_nombre ?? "—"}</span>,
     },
     {
+      // Preview de items en la fila colapsada. Antes mostraba todos los
+      // titulos concatenados dentro de un contenedor con max-w-[160px] y
+      // truncate: en un pedido multi-item (packs ML, multi-item Falabella)
+      // eso recortaba silenciosamente la lista sin ninguna pista de que
+      // habia mas productos aparte del primero. Ahora se muestra solo el
+      // primer item + un badge "+N" para que un pedido multi-item se note
+      // de un vistazo sin tener que expandir la fila. La lista completa
+      // (todos los items, sin recortar) siempre esta disponible al expandir
+      // -> ver OrderDetail mas arriba, que ya itera pedido.items completo.
       id: "items_preview", header: "Items",
       cell: ({ row }) => {
-        const t = (row.original.items ?? []).map(i => i.title).join(", ");
-        return <span className="hidden lg:block max-w-[160px] truncate text-xs text-muted-foreground">{t || "—"}</span>;
+        const items = row.original.items ?? [];
+        if (items.length === 0) {
+          return <span className="hidden lg:block text-xs text-muted-foreground">—</span>;
+        }
+        return (
+          <span className="hidden lg:flex items-center gap-1 max-w-[160px]">
+            <span className="truncate text-xs text-muted-foreground">{items[0].title}</span>
+            {items.length > 1 && (
+              <span className="shrink-0 rounded bg-secondary px-1 py-0.5 text-[10px] font-medium text-muted-foreground">
+                +{items.length - 1}
+              </span>
+            )}
+          </span>
+        );
       },
     },
     {
