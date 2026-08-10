@@ -15,29 +15,50 @@ interface PackingCardProps {
 const MIN_FOTOS = 1;
 const MAX_FOTOS = 3;
 
+// Fecha calendario (YYYY-MM-DD) en horario de Chile para una fecha dada.
+// Mismo criterio que usa el RPC listar_pedidos_urgentes_hoy en Supabase
+// (fecha_limite_despacho at time zone 'America/Santiago')::date -- comparar
+// dia calendario, no horas de reloj. Ver Tarea #91: antes DeadlineBadge
+// comparaba diffHoras entre new Date() y new Date(fecha_limite_despacho),
+// lo que hacia que un pedido con limite MANANA (ej. 09:00 hora Chile)
+// saliera como "Vence hoy" apenas quedaban menos de 24h de reloj.
+function getChileYMD(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
 function DeadlineBadge({ fecha }: { fecha: string | null }) {
   if (!fecha) return <span className="text-xs text-muted-foreground">Sin fecha límite</span>;
 
-  const ahora = new Date();
-  const limite = new Date(fecha);
-  const diffMs = limite.getTime() - ahora.getTime();
-  const diffHoras = diffMs / 36e5;
+  const hoyYMD = getChileYMD(new Date());
+  const limiteYMD = getChileYMD(new Date(fecha));
 
-  if (diffHoras < 0) {
+  // Comparar como fechas UTC "puras" (medianoche) para sacar la diferencia
+  // en dias de calendario sin que husos horarios metan ruido -- ambos
+  // strings ya vienen normalizados al dia calendario de Chile.
+  const hoyMs = Date.parse(`${hoyYMD}T00:00:00Z`);
+  const limiteMs = Date.parse(`${limiteYMD}T00:00:00Z`);
+  const diffDias = Math.round((limiteMs - hoyMs) / 86400000);
+
+  if (diffDias < 0) {
     return (
       <span className="flex items-center gap-1 rounded-full bg-rose-500/20 px-2 py-0.5 text-xs font-semibold text-rose-400 animate-pulse">
         <AlertTriangle className="h-3 w-3" /> Atrasado
       </span>
     );
   }
-  if (diffHoras < 24) {
+  if (diffDias === 0) {
     return (
       <span className="flex items-center gap-1 rounded-full bg-rose-500/15 px-2 py-0.5 text-xs font-medium text-rose-500">
         <Timer className="h-3 w-3" /> Vence hoy
       </span>
     );
   }
-  if (diffHoras < 48) {
+  if (diffDias === 1) {
     return (
       <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-500">
         <Clock className="h-3 w-3" /> Vence mañana
