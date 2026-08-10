@@ -17,6 +17,16 @@ export default function PedidosPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [tabEmpacador, setTabEmpacador] = useState<"pendientes" | "historial">("pendientes");
 
+  // Filtro inicial de la tabla (admin) cuando se llega desde un link como el
+  // de la tarjeta KPI "Por despachar" del dashboard (?filtro=por_despachar).
+  // Se lee via window.location en un efecto (no en el render) para no
+  // romper la hidratacion -- mismo patron que getNext() en app/login.
+  const [filtroInicial, setFiltroInicial] = useState<"all" | "por_despachar">("all");
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("filtro") === "por_despachar") setFiltroInicial("por_despachar");
+  }, []);
+
   const loadData = useCallback(async () => {
     if (!clienteId) return;
     try { setPedidos(await fetchPedidos(clienteId)); } catch (err) { console.error(err); }
@@ -66,7 +76,7 @@ export default function PedidosPage() {
                   Todos los <em>pedidos</em>
                 </h1>
               </div>
-              <OrdersTable pedidos={pedidos} />
+              <OrdersTable pedidos={pedidos} initialEstadoFilter={filtroInicial} />
             </div>
           )}
 
