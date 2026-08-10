@@ -19,7 +19,18 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
-interface OrdersTableProps { pedidos: Pedido[]; }
+// Filtro pseudo-estado usado solo en esta tabla, no existe como valor real
+// de pedido.estado. Combina "paid" + "ready_to_ship" -- lo mismo que cuenta
+// la tarjeta KPI "Por despachar" del dashboard (ver kpi-cards.tsx /
+// fetchDashboardResumen). Se linkea aca via ?filtro=por_despachar.
+type EstadoFilterValue = "all" | "por_despachar" | EstadoPedido;
+const ESTADOS_QUE_CUENTAN_POR_DESPACHAR: EstadoPedido[] = ["paid", "ready_to_ship"];
+
+interface OrdersTableProps {
+  pedidos: Pedido[];
+  /** Filtro de estado inicial (ej. llegando desde el link de la tarjeta KPI). Default "all". */
+  initialEstadoFilter?: EstadoFilterValue;
+}
 
 // Etiqueta "3x Producto (SKU: ABC)" usada tanto en las exportaciones como
 // en cualquier resumen de texto plano de los items de un pedido.
@@ -296,8 +307,9 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   );
 }
 
-const ESTADOS_FILTER: { key: "all" | EstadoPedido; label: string }[] = [
+const ESTADOS_FILTER: { key: EstadoFilterValue; label: string }[] = [
   { key: "all", label: "Todos" },
+  { key: "por_despachar", label: "Por despachar" },
   { key: "not_paid", label: "Sin pagar" },
   { key: "pending", label: "Pendiente" },
   { key: "paid", label: "Pagado" },
@@ -308,17 +320,28 @@ const ESTADOS_FILTER: { key: "all" | EstadoPedido; label: string }[] = [
   { key: "returned", label: "Devuelto" },
 ];
 
-export function OrdersTable({ pedidos }: OrdersTableProps) {
+export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState<"all" | Plataforma>("all");
-  const [estadoFilter, setEstadoFilter] = useState<"all" | EstadoPedido>("all");
+  const [estadoFilter, setEstadoFilter] = useState<EstadoFilterValue>(initialEstadoFilter);
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
+
+  // El padre (app/pedidos/page.tsx) lee el query param ?filtro=... recien
+  // en un efecto (para no romper hidratacion con window.location durante el
+  // render). Esta tabla ya se monto para entonces con estadoFilter="all",
+  // asi que hace falta este efecto para aplicar el filtro cuando el padre
+  // termina de leerlo. No pisa cambios manuales del usuario despues, porque
+  // initialEstadoFilter del padre solo cambia una vez, justo despues del
+  // mount.
+  useEffect(() => {
+    if (initialEstadoFilter !== "all") setEstadoFilter(initialEstadoFilter);
+  }, [initialEstadoFilter]);
 
   // Cierra el menu de exportar al hacer clic afuera, como cualquier
   // dropdown normal (si no, queda abierto colgando sobre la tabla).
@@ -361,6 +384,8 @@ export function OrdersTable({ pedidos }: OrdersTableProps) {
     // el filtro "Cancelado".
     if (estadoFilter === "all") {
       data = data.filter((p) => p.estado !== "cancelled");
+    } else if (estadoFilter === "por_despachar") {
+      data = data.filter((p) => ESTADOS_QUE_CUENTAN_POR_DESPACHAR.includes(p.estado));
     } else {
       data = data.filter((p) => p.estado === estadoFilter);
     }
