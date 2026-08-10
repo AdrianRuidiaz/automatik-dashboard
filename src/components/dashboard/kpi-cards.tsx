@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Package, DollarSign, Truck, XCircle, Receipt, TrendingDown } from "lucide-react";
 import { formatCLP, cn } from "@/lib/utils";
 import type { DashboardResumen } from "@/lib/types";
@@ -38,6 +39,10 @@ export function KpiCards({ data }: KpiCardsProps) {
       icon: Truck, label: "Por despachar", rawValue: data.por_despachar, format: (n: number) => String(Math.round(n)),
       sub: `${data.por_despachar_ml} ML · ${data.por_despachar_fa} FA`,
       tone: data.por_despachar > 0 ? ("warn" as const) : ("neutral" as const),
+      // Tarea: hacer la tarjeta clickeable. Lleva a la lista de pedidos con
+      // el filtro "Por despachar" (paid + ready_to_ship, ML y FA) ya
+      // aplicado -- ver ESTADOS_FILTER/filtered en orders-table.tsx.
+      href: "/pedidos?filtro=por_despachar",
     },
     {
       icon: XCircle, label: "Cancelados", rawValue: data.cancelados, format: (n: number) => String(Math.round(n)),
@@ -91,25 +96,42 @@ export function KpiCards({ data }: KpiCardsProps) {
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {mainCards.map((card, i) => (
-          <div key={card.label} className={cn("card-premium animate-in-soft relative overflow-hidden p-4", stagger[i % stagger.length])}>
-            {card.tone !== "neutral" && (
-              <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", glow[card.tone])} />
-            )}
-            <div className="relative">
-              <div className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-lg", iconTone[card.tone])}>
-                <card.icon className="h-4 w-4" />
+        {mainCards.map((card, i) => {
+          const className = cn(
+            "card-premium animate-in-soft relative overflow-hidden p-4",
+            stagger[i % stagger.length],
+            "href" in card && card.href && "cursor-pointer transition-colors hover:border-primary/30"
+          );
+          const content = (
+            <>
+              {card.tone !== "neutral" && (
+                <div className={cn("pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent", glow[card.tone])} />
+              )}
+              <div className="relative">
+                <div className={cn("mb-3 flex h-9 w-9 items-center justify-center rounded-lg", iconTone[card.tone])}>
+                  <card.icon className="h-4 w-4" />
+                </div>
+                <p className="eyebrow">{card.label}</p>
+                <CountUp
+                  value={card.rawValue}
+                  format={card.format}
+                  className={cn("tabular mt-1 block text-2xl font-semibold tracking-tight sm:text-[28px]", valueTone[card.tone])}
+                />
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">{card.sub}</p>
               </div>
-              <p className="eyebrow">{card.label}</p>
-              <CountUp
-                value={card.rawValue}
-                format={card.format}
-                className={cn("tabular mt-1 block text-2xl font-semibold tracking-tight sm:text-[28px]", valueTone[card.tone])}
-              />
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">{card.sub}</p>
+            </>
+          );
+
+          return "href" in card && card.href ? (
+            <Link key={card.label} href={card.href} className={className}>
+              {content}
+            </Link>
+          ) : (
+            <div key={card.label} className={className}>
+              {content}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
