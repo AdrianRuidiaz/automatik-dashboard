@@ -1,3 +1,4 @@
+import "server-only";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 // Cliente de Supabase SOLO para uso en el servidor (API routes).
@@ -6,7 +7,9 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // depender de que las políticas RLS del anon key ya cubran ese caso.
 //
 // IMPORTANTE: nunca importar este archivo desde un componente "use client"
-// ni exponer SUPABASE_SERVICE_ROLE_KEY con el prefijo NEXT_PUBLIC_.
+// ni exponer SUPABASE_SERVICE_ROLE_KEY con el prefijo NEXT_PUBLIC_. El
+// import "server-only" de arriba convierte un import accidental desde el
+// cliente en un error de build, en vez de depender solo de este comentario.
 //
 // NOTA: sin un tipo Database<> generado, createClient() sin generics hace
 // que supabase-js/postgrest-js infieran el resultado de .select()/.update()
