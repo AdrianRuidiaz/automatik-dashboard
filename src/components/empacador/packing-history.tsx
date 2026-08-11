@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { ChevronDown, ChevronRight, Camera, Package, CheckCircle, Clock, Search, UserCheck } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import type { Pedido, Archivo } from "@/lib/types";
 
 interface PackingHistoryProps {
@@ -32,9 +32,6 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
   // repetirlo foto por foto. Queda vacio para evidencia subida antes de que
   // existiera esta trazabilidad (subido_por sin registrar).
   const empacadoPor = evidencias.find((e) => e.subido_por_usuario?.nombre)?.subido_por_usuario?.nombre;
-
-  const getPublicUrl = (path: string) =>
-    supabase.storage.from("evidencias").getPublicUrl(path).data.publicUrl;
 
   return (
     <div className="border-t border-border bg-secondary/30 px-3 py-4 sm:px-4 animate-in slide-in-from-top-1 duration-200">
@@ -84,17 +81,23 @@ function EvidenciaExpandible({ pedido }: { pedido: Pedido }) {
               )}
               <div className="flex flex-wrap gap-2">
                 {evidencias.map((ev) => {
-                  const url = getPublicUrl(ev.url);
+                  // ev.url ya es la URL publica completa (la guarda asi
+                  // registrarArchivo) -- no volver a pasarla por
+                  // getPublicUrl(), que la trataria como un path relativo
+                  // y armaria una URL rota (completa anidada en otra).
+                  const url = ev.url;
                   return (
                     <button
                       key={ev.id}
                       onClick={() => setLightbox(url)}
                       className="group relative h-24 w-24 overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-md active:scale-95"
                     >
-                      <img
+                      <Image
                         src={url}
                         alt={ev.nombre_archivo ?? "Evidencia"}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        fill
+                        sizes="96px"
+                        className="object-cover transition-transform group-hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/10" />
                     </button>
