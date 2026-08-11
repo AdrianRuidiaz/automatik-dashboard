@@ -142,6 +142,68 @@ export async function registrarArchivo(archivo: {
     if (error) throw error;
 }
 
+// archivos.url siempre guarda la URL PUBLICA COMPLETA que devuelve
+// uploadArchivo (ej. "https://xxx.supabase.co/storage/v1/object/public/
+// evidencias/<pack>/evidencia_1_123.jpg"), nunca el path relativo dentro del
+// bucket. Para operar sobre el objeto real en Storage (borrar, o borrar el
+// viejo despues de reemplazar) hace falta el path -- esta funcion lo extrae
+// de la url guardada, sin depender de convenciones de carpetas que no son
+// consistentes entre buckets (ej. "evidencias" usa id_plataforma como primer
+// segmento, "etiquetas"/"documentos" usan cliente_id).
+function pathDesdeUrlPublica(bucket: string, urlPublica: string): string {
+    const marcador = `/object/public/${bucket}/`;
+    const idx = urlPublica.indexOf(marcador);
+    return idx === -1 ? urlPublica : urlPublica.slice(idx + marcador.length);
+}
+
+// Tarea: admin y vendedor pueden eliminar una evidencia de empaque que subio
+// el empacador (ej. foto borrosa, repetida o equivocada). Requiere la policy
+// DELETE agregada en la migracion permitir_admin_vendedor_editar_evidencias
+// -- antes NO existia ninguna policy de DELETE en archivos ni en el storage
+// de evidencias, asi que nadie (ni siquiera admin) podia borrar.
+export async function eliminarArchivo(archivo: Archivo, bucket: string): Promise<void> {
+    const path = pathDesdeUrlPublica(bucket, archivo.url);
+    const { error: errorStorage } = await supabase.storage.from(bucket).remove([path]);
+    if (errorStorage) throw errorStorage;
+    const { error } = await supabase.from("archivos").delete().eq("id", archivo.id);
+    if (error) throw error;
+}
+
+// Tarea: admin y vendedor pueden reemplazar una evidencia por otra foto sin
+// tener que borrar y volver a subir por separado. Sube el archivo nuevo con
+// un path nuevo (mismo patron de nombre que ya usa el empacador al subir),
+// actualiza la MISMA fila en archivos (conserva id/subido_por/created_at
+// originales -- solo cambian url y nombre_archivo) y recien al final borra
+// el objeto viejo del storage. El borrado del objeto viejo es best-effort:
+// si falla, no revierte el reemplazo (la fila ya quedo apuntando al archivo
+// nuevo, que es lo que le importa al usuario), simplemente queda un objeto
+// huerfano en storage.
+export async function reemplazarArchivo(
+    archivo: Archivo,
+    bucket: string,
+    file: File,
+    carpeta: string
+  ): Promise<string> {
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const nuevaPath = `${carpeta}/${archivo.tipo}_${Date.now()}.${ext}`;
+    const nuevaUrl = await uploadArchivo(bucket, nuevaPath, file);
+
+    const { error } = await supabase
+      .from("archivos")
+      .update({ url: nuevaUrl, nombre_archivo: file.name })
+      .eq("id", archivo.id);
+    if (error) throw error;
+
+    const pathVieja = pathDesdeUrlPublica(bucket, archivo.url);
+    try {
+          await supabase.storage.from(bucket).remove([pathVieja]);
+    } catch (e) {
+          console.error("No se pudo borrar el archivo viejo (huerfano en storage):", e);
+    }
+
+    return nuevaUrl;
+}
+
 export async function updateEstadoPedido(
     pedidoId: string,
     estado: EstadoPedido
