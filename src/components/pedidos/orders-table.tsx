@@ -6,14 +6,14 @@ import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2, PackageX, UserCheck } from "lucide-react";
+import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, Package, Info, Camera, CalendarDays, Filter, X, Ban, Loader2, PackageX } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos, cancelarPedido } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import { useRole } from "@/lib/role-context";
 import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido, Plataforma, EstadoPedido, Archivo } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
+import { EvidenciaGaleria } from "@/components/pedidos/evidencia-galeria";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -155,13 +155,12 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
   const evidencias = archivos.filter(a => a.tipo === "evidencia_empaque");
   const documentos = archivos.filter(a => a.tipo === "boleta" || a.tipo === "factura" || a.tipo === "nota_credito");
 
-  // Igual que en el historial del empacador: alcanza con un nombre por
-  // pedido (todas las fotos suelen salir de la misma sesion de empaque).
-  const empacadoPor = evidencias.find((e) => e.subido_por_usuario?.nombre)?.subido_por_usuario?.nombre;
-
-  const getPublicUrl = (bucket: string, path: string) => {
-    const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-    return data.publicUrl;
+  // Tarea: admin (y vendedor, en DetalleVendedor) puede eliminar/reemplazar
+  // evidencias que subio el empacador -- ver EvidenciaGaleria. Al eliminar
+  // o reemplazar una, se actualiza el estado local reemplazando solo las
+  // evidencias (los documentos tributarios de `archivos` quedan intactos).
+  const handleEvidenciasChange = (nuevasEvidencias: Archivo[]) => {
+    setArchivos((prev) => [...prev.filter((a) => a.tipo !== "evidencia_empaque"), ...nuevasEvidencias]);
   };
 
   return (
@@ -257,25 +256,18 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
               <div className="skeleton h-16 w-16 rounded-lg" />
               <div className="skeleton h-16 w-16 rounded-lg" />
             </div>
-          ) : evidencias.length > 0 ? (
-            <>
-              {empacadoPor && (
-                <p className="mb-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <UserCheck className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                  Subido por <span className="font-medium text-foreground">{empacadoPor}</span>
-                </p>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {evidencias.map((ev) => (
-                  <a key={ev.id} href={getPublicUrl("evidencias", ev.url)} target="_blank" rel="noopener noreferrer"
-                    className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border bg-secondary">
-                    <img src={getPublicUrl("evidencias", ev.url)} alt={ev.nombre_archivo ?? "Evidencia"}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-                  </a>
-                ))}
-              </div>
-            </>
-          ) : <p className="text-xs text-muted-foreground">Sin evidencias</p>}
+          ) : (
+            // Tarea: admin puede eliminar/reemplazar las evidencias que subio
+            // el empacador (editable=true). OrdersTable/OrderDetail solo se
+            // renderiza para rol === "admin" (ver app/pedidos/page.tsx), asi
+            // que no hace falta ningun chequeo de rol adicional aca.
+            <EvidenciaGaleria
+              evidencias={evidencias}
+              idPlataforma={pedido.id_plataforma}
+              editable
+              onChange={handleEvidenciasChange}
+            />
+          )}
         </div>
 
         <div>
@@ -290,7 +282,7 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           ) : documentos.length > 0 ? (
             <div className="space-y-2">
               {documentos.map((doc) => (
-                <a key={doc.id} href={getPublicUrl("documentos", doc.url)} target="_blank" rel="noopener noreferrer"
+                <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 rounded-md border border-border bg-background p-2 text-xs hover:bg-secondary transition-colors">
                   <FileText className="h-4 w-4 text-primary shrink-0" />
                   <div className="min-w-0">
@@ -303,6 +295,17 @@ function OrderDetail({ pedido }: { pedido: Pedido }) {
           ) : <p className="text-xs text-muted-foreground">Sin documentos tributarios</p>}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Cancelar pedido"
+        description="Este pedido va a quedar marcado como cancelado. No se elimina y se puede seguir viendo en la pestaña de cancelados."
+        confirmLabel="Cancelar pedido"
+        danger
+        loading={cancelando}
+        onConfirm={confirmarCancelar}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
