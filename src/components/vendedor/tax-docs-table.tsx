@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
 import { uploadArchivo, registrarArchivo, fetchArchivos } from "@/lib/api";
-import { supabase } from "@/lib/supabase";
 import {
   esDocumentoTributario,
   TIPOS_DOCUMENTO_TRIBUTARIO,
@@ -315,7 +314,7 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
                   {tab === "activos" && (
                     <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
                       {docsPedido.map((d) => (
-                        <a key={d.id} href={supabase.storage.from("documentos").getPublicUrl(d.url).data.publicUrl}
+                        <a key={d.id} href={d.url}
                           target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40">
                           <Eye className="h-3.5 w-3.5" /> Ver {DOC_LABELS[d.tipo as TipoDocumentoTributario]?.label.toLowerCase()}
