@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { Loader2, RefreshCw, Trash2, UserCheck } from "lucide-react";
 import { eliminarArchivo, reemplazarArchivo } from "@/lib/api";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -71,10 +72,12 @@ export function EvidenciaGaleria({ evidencias, idPlataforma, editable, onChange 
         {evidencias.map((ev) => (
           <div key={ev.id} className="group relative h-16 w-16 overflow-hidden rounded-lg border border-border bg-secondary">
             <a href={ev.url} target="_blank" rel="noopener noreferrer" className="block h-full w-full">
-              <img
+              <Image
                 src={ev.url}
                 alt={ev.nombre_archivo ?? "Evidencia"}
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                fill
+                sizes="64px"
+                className="object-cover transition-transform group-hover:scale-105"
               />
             </a>
 
