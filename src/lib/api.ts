@@ -19,12 +19,24 @@ import type {
 // poder mostrar "Cancelado por X" sin una consulta aparte por pedido.
 const PEDIDO_SELECT = "*, cancelado_por_usuario:usuarios_roles!pedidos_cancelado_por_fkey(nombre)";
 
+// Limite de seguridad, no paginacion real todavia. fetchPedidos la usan tanto
+// la tabla de admin (historial completo) como la cola de "pendientes de
+// empacar" del empacador -- esta ultima necesita ver TODO pedido no terminal
+// sin importar su antiguedad, asi que un filtro por rango de fechas por
+// defecto esconderia pedidos atrasados de la cola en vez de optimizar nada.
+// 500 da margen amplio sobre el volumen actual (123 pedidos totales, ver
+// auditoria de agosto 2026); si algun cliente se acerca a este numero, el
+// siguiente paso es paginacion real (cursor por fecha_pedido), no subir el
+// limite.
+const LIMITE_PEDIDOS_DEFAULT = 500;
+
 export async function fetchPedidos(clienteId: string): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from("pedidos")
       .select(PEDIDO_SELECT)
       .eq("cliente_id", clienteId)
-      .order("fecha_pedido", { ascending: false });
+      .order("fecha_pedido", { ascending: false })
+      .limit(LIMITE_PEDIDOS_DEFAULT);
     if (error) throw error;
     return (data as unknown as Pedido[]) ?? [];
 }
