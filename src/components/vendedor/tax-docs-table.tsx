@@ -16,6 +16,7 @@ import {
   type TipoDocumentoTributario,
 } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
+import { EvidenciaGaleria } from "@/components/pedidos/evidencia-galeria";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
@@ -37,8 +38,13 @@ function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) 
   }, [pedido.id]);
 
   const evidencias = archivos.filter((a) => a.tipo === "evidencia_empaque");
-  const publicUrl = (bucket: string, path: string) =>
-    supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+
+  // Tarea: vendedor puede eliminar/reemplazar evidencias que subio el
+  // empacador (ver EvidenciaGaleria). Actualiza solo el subconjunto de
+  // evidencias del estado local, sin tocar el resto de `archivos`.
+  const handleEvidenciasChange = (nuevasEvidencias: Archivo[]) => {
+    setArchivos((prev) => [...prev.filter((a) => a.tipo !== "evidencia_empaque"), ...nuevasEvidencias]);
+  };
 
   return (
     <div className="animate-in-soft border-t border-border bg-secondary/30 px-4 py-4 sm:px-6">
@@ -84,7 +90,7 @@ function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) 
             {docs.length > 0 ? (
               <div className="flex flex-col gap-1.5">
                 {docs.map((doc) => (
-                  <a key={doc.id} href={publicUrl("documentos", doc.url)} target="_blank" rel="noopener noreferrer"
+                  <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40">
                     <FileCheck className="h-4 w-4 text-primary" />
                     <span className="capitalize">{doc.tipo.replace("_", " ")}</span>
@@ -106,17 +112,18 @@ function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) 
 
           <div>
             <p className="eyebrow mb-2.5 flex items-center gap-1.5"><Camera className="h-3 w-3" /> Evidencias</p>
-            {cargando ? <p className="text-xs text-muted-foreground">Cargando...</p>
-              : evidencias.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {evidencias.map((ev) => (
-                    <a key={ev.id} href={publicUrl("evidencias", ev.url)} target="_blank" rel="noopener noreferrer"
-                      className="h-14 w-14 overflow-hidden rounded-lg border border-border">
-                      <img src={publicUrl("evidencias", ev.url)} alt="Evidencia" className="h-full w-full object-cover" />
-                    </a>
-                  ))}
-                </div>
-              ) : <p className="text-xs text-muted-foreground">Sin evidencias</p>}
+            {cargando ? (
+              <p className="text-xs text-muted-foreground">Cargando...</p>
+            ) : (
+              // Tarea: vendedor puede eliminar/reemplazar evidencias que subio
+              // el empacador (editable=true).
+              <EvidenciaGaleria
+                evidencias={evidencias}
+                idPlataforma={pedido.id_plataforma}
+                editable
+                onChange={handleEvidenciasChange}
+              />
+            )}
           </div>
         </div>
       </div>
