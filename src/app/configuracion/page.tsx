@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import Image from "next/image";
 import { User, Bell, Palette, Loader2, Check, Shield, Building2, Users, Monitor, Smartphone } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useRole } from "@/lib/role-context";
@@ -593,10 +594,9 @@ function SeccionEmpresa() {
 
       <form onSubmit={handleSubmit} className="max-w-md space-y-4">
         <div className="flex items-center gap-4">
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-input bg-secondary">
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-input bg-secondary">
             {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt="Logo" className="h-full w-full object-cover" />
+              <Image src={logoUrl} alt="Logo" fill sizes="64px" className="object-cover" />
             ) : (
               <Building2 className="h-6 w-6 text-muted-foreground" />
             )}
