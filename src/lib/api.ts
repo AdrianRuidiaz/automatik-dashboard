@@ -85,6 +85,28 @@ export async function fetchDashboardResumen(clienteId: string): Promise<Dashboar
     return data;
 }
 
+// Tarea: filtro de rango de fechas en las tarjetas KPI del dashboard (1
+// semana / 1 mes / 3 meses / 6 meses / 12 meses). v_dashboard_resumen agrega
+// TODO el historico del cliente sin parametro de fecha, asi que no sirve
+// aca -- se usa en su lugar el RPC dashboard_kpis_rango (misma agregacion,
+// acotada a [desde, hasta) sobre fecha_pedido). Se llama dos veces desde
+// page.tsx (periodo actual y periodo anterior equivalente) para calcular el
+// delta % que muestra cada tarjeta.
+export async function fetchDashboardKpisRango(
+    clienteId: string,
+    desde: Date,
+    hasta: Date
+  ): Promise<DashboardResumen | null> {
+    const { data, error } = await supabase.rpc("dashboard_kpis_rango", {
+          p_cliente_id: clienteId,
+          p_desde: desde.toISOString(),
+          p_hasta: hasta.toISOString(),
+    });
+    if (error) throw error;
+    const fila = Array.isArray(data) ? data[0] : data;
+    return (fila as DashboardResumen) ?? null;
+}
+
 export async function fetchTendenciaDiaria(
     clienteId: string,
     dias = 7
