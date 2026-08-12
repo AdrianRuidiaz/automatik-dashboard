@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
+import { KpiRangeFilter } from "@/components/dashboard/kpi-range-filter";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PackingCard } from "@/components/empacador/packing-card";
 import { SearchBar } from "@/components/empacador/search-bar";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { ManualOrderForm } from "@/components/vendedor/manual-order-form";
 import { supabase } from "@/lib/supabase";
-import { fetchPedidos, fetchDashboardResumen, fetchTendenciaDiaria } from "@/lib/api";
+import { fetchPedidos, fetchDashboardKpisRango, fetchTendenciaDiaria } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
+import { RANGO_KPI_DEFAULT, calcularRangoFechas, type RangoKpi } from "@/lib/date-ranges";
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
@@ -24,6 +26,10 @@ export default function HomePage() {
   const { clienteId } = useRole();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
+  const [resumenAnterior, setResumenAnterior] = useState<DashboardResumen | null>(null);
+  // Tarea: filtro de rango de fechas de las tarjetas KPI. Default "1 mes"
+  // (no "todo el historico") -- ver RANGO_KPI_DEFAULT en lib/date-ranges.
+  const [rangoKpi, setRangoKpi] = useState<RangoKpi>(RANGO_KPI_DEFAULT);
   const [tendencia, setTendencia] = useState<TendenciaDiaria[]>([]);
   const [vendedorTab, setVendedorTab] = useState<"docs" | "manual">("docs");
   const [empacadorTab, setEmpacadorTab] = useState<"pendientes" | "historial">("pendientes");
@@ -34,15 +40,17 @@ export default function HomePage() {
     if (!clienteId) return;
     setRefreshing(true);
     try {
-      const [p, r, t] = await Promise.all([
+      const { desde, hasta, prevDesde, prevHasta } = calcularRangoFechas(rangoKpi);
+      const [p, r, rPrev, t] = await Promise.all([
         fetchPedidos(clienteId),
-        fetchDashboardResumen(clienteId),
+        fetchDashboardKpisRango(clienteId, desde, hasta),
+        fetchDashboardKpisRango(clienteId, prevDesde, prevHasta),
         fetchTendenciaDiaria(clienteId, 7),
       ]);
-      setPedidos(p); setResumen(r); setTendencia(t); setLastUpdate(new Date());
+      setPedidos(p); setResumen(r); setResumenAnterior(rPrev); setTendencia(t); setLastUpdate(new Date());
     } catch (err) { console.error("Error cargando datos:", err); }
     finally { setRefreshing(false); }
-  }, [clienteId]);
+  }, [clienteId, rangoKpi]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -150,7 +158,13 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <KpiCards data={resumen} />
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="eyebrow">Periodo</p>
+                  <KpiRangeFilter value={rangoKpi} onChange={setRangoKpi} />
+                </div>
+                <KpiCards data={resumen} previousData={resumenAnterior} />
+              </div>
 
               <section>
                 <h2 className="display mb-3 text-lg sm:text-xl">Tendencia diaria</h2>
