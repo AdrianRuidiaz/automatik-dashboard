@@ -5,12 +5,11 @@ import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, CalendarDays, Filter, X, PackageX, Copy } from "lucide-react";
+import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, CalendarDays, Filter, X, PackageX } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta } from "@/lib/utils";
 import { pdfUrl } from "@/lib/pdf";
 import { exportarPedidosCSV, exportarPedidosXLSX } from "@/lib/export-pedidos";
 import type { Pedido, Plataforma, EstadoPedido } from "@/lib/types";
-import { detectarPosiblesReintentos } from "@/lib/duplicate-detection";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 import { OrderDetail } from "@/components/pedidos/order-detail";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
@@ -21,9 +20,6 @@ import { EstadoVacio } from "@/components/ui/estado-vacio";
 // fetchDashboardResumen). Se linkea aca via ?filtro=por_despachar.
 type EstadoFilterValue = "all" | "por_despachar" | EstadoPedido;
 const ESTADOS_QUE_CUENTAN_POR_DESPACHAR: EstadoPedido[] = ["paid", "ready_to_ship"];
-
-const TOOLTIP_POSIBLE_REINTENTO =
-  "Posible doble intento de compra del cliente en la plataforma — ambas órdenes son reales, no es un error del sistema.";
 
 interface OrdersTableProps {
   pedidos: Pedido[];
@@ -44,22 +40,6 @@ const ESTADOS_FILTER: { key: EstadoFilterValue; label: string }[] = [
   { key: "returned", label: "Devuelto" },
 ];
 
-// Badge sutil/informativo para pedidos que calzan con el patron de
-// "reintento de compra" (ver src/lib/duplicate-detection.ts). No es una
-// alerta -- por eso usa los mismos tonos neutros que el badge "+N" de
-// items, no los colores de estado.
-function PosibleReintentoBadge() {
-  return (
-    <span
-      title={TOOLTIP_POSIBLE_REINTENTO}
-      className="inline-flex shrink-0 items-center gap-0.5 rounded bg-secondary px-1 py-0.5 text-[9px] font-medium text-muted-foreground"
-    >
-      <Copy className="h-2.5 w-2.5" />
-      <span className="hidden lg:inline">Posible reintento</span>
-    </span>
-  );
-}
-
 export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -71,12 +51,6 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
-
-  // Tarea: marcar visualmente los "duplicados explicados" (reintento de
-  // checkout del lado de la plataforma). Se calcula sobre TODOS los
-  // pedidos cargados (no solo los filtrados) para que la marca sea
-  // consistente sin importar que filtro de estado este activo.
-  const posiblesReintentos = useMemo(() => detectarPosiblesReintentos(pedidos), [pedidos]);
 
   // El padre (app/pedidos/page.tsx) lee el query param ?filtro=... recien
   // en un efecto (para no romper hidratacion con window.location durante el
@@ -161,12 +135,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
     {
       accessorKey: "id_plataforma",
       header: ({ column }) => (<button className="flex items-center gap-1 font-normal" onClick={() => column.toggleSorting()}>N° pedido <ArrowUpDown className="h-3 w-3" /></button>),
-      cell: ({ row }) => (
-        <span className="inline-flex items-center gap-1">
-          <span className="font-medium text-xs md:text-sm">{row.original.id_plataforma}</span>
-          {posiblesReintentos.has(row.original.id) && <PosibleReintentoBadge />}
-        </span>
-      ),
+      cell: ({ row }) => <span className="font-medium text-xs md:text-sm">{row.original.id_plataforma}</span>,
     },
     {
       accessorKey: "plataforma", header: "Plat.",
@@ -229,7 +198,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
         </button>
       ) : <span className="text-xs text-muted-foreground">-</span>,
     },
-  ], [expandedRows, posiblesReintentos]);
+  ], [expandedRows]);
 
   const table = useReactTable({
     data: filtered, columns, state: { sorting, globalFilter },
@@ -385,7 +354,6 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
                     <span className={cn("pill shrink-0", p.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark")}>
                       {p.plataforma === "ML" ? "ML" : "FA"}
                     </span>
-                    {posiblesReintentos.has(p.id) && <PosibleReintentoBadge />}
                   </div>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">
                     {p.cliente_nombre || "Sin cliente"} · {formatFechaCorta(p.fecha_pedido)}
