@@ -21,10 +21,13 @@ interface BeforeInstallPromptEvent extends Event {
 // mostrar un boton que instale directamente, solo el flujo manual de
 // "Compartir > Agregar a pantalla de inicio". puedeInstalar simplemente
 // se queda en false en iOS, así que el boton no aparece (no hay nada que
-// hacer con un click ahí).
+// hacer con un click ahí). Para esos casos exponemos esIOS, asi el
+// consumidor (p.ej. Configuracion) puede mostrar instrucciones manuales
+// en vez de un boton que nunca va a servir.
 export function useInstallPrompt() {
   const [deferredEvent, setDeferredEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [instalada, setInstalada] = useState(false);
+  const [esIOS, setEsIOS] = useState(false);
 
   useEffect(() => {
     // Si ya se abrio como app instalada (standalone), nunca va a llegar
@@ -33,6 +36,12 @@ export function useInstallPrompt() {
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setInstalada(yaInstalada);
+
+    // iPadOS 13+ reporta su user agent como Mac, por eso el chequeo extra
+    // de soporte tactil (los Mac de escritorio no lo tienen).
+    const ua = window.navigator.userAgent;
+    const esIpad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    setEsIOS(/iPhone|iPod/.test(ua) || esIpad);
 
     const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -65,6 +74,7 @@ export function useInstallPrompt() {
   return {
     puedeInstalar: !!deferredEvent && !instalada,
     instalada,
+    esIOS: esIOS && !instalada,
     instalar,
   };
 }
