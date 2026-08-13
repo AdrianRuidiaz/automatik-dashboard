@@ -13,10 +13,12 @@ const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   admin: [
     { label: "Dashboard", href: "/" },
     { label: "Pedidos", href: "/pedidos" },
+    { label: "Productos", href: "/productos" },
   ],
   vendedor: [
     { label: "Ventas", href: "/" },
     { label: "Pedidos", href: "/pedidos" },
+    { label: "Productos", href: "/productos" },
   ],
   empacador: [],
 };
