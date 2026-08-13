@@ -3,14 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProductosTable } from "@/components/productos/productos-table";
+import { CatalogoUnificadoTable } from "@/components/productos/catalogo-unificado-table";
+import { FiltroPills } from "@/components/pedidos/filtro-pills";
 import { fetchProductos } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { supabase } from "@/lib/supabase";
 import type { Producto } from "@/lib/types";
 
+type VistaProductos = "plataforma" | "catalogo";
+
+const VISTA_OPTIONS: { key: VistaProductos; label: string }[] = [
+  { key: "plataforma", label: "Por plataforma" },
+  { key: "catalogo", label: "Catálogo unificado" },
+];
+
 export default function ProductosPage() {
   const { clienteId } = useRole();
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [vista, setVista] = useState<VistaProductos>("plataforma");
 
   const loadData = useCallback(async () => {
     if (!clienteId) return;
@@ -33,6 +43,12 @@ export default function ProductosPage() {
   // seguidas (stock, estado): el debounce agrupa esos cambios y solo
   // recarga una vez, 800ms despues del ultimo evento detectado, en vez de
   // hacer N recargas completas en cadena.
+  //
+  // Una sola suscripcion/fetch para las DOS vistas ("Por plataforma" y
+  // "Catalogo unificado" mas abajo): ambas reciben el mismo arreglo
+  // `productos` como prop y cada una arma su propia derivacion (filtro
+  // plano vs. agrupado por sku_interno) con useMemo, sin duplicar el fetch
+  // ni el channel de Realtime al cambiar de vista.
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!clienteId) return;
@@ -63,7 +79,12 @@ export default function ProductosPage() {
               Tus <em>productos</em>
             </h1>
           </div>
-          <ProductosTable productos={productos} />
+          <FiltroPills options={VISTA_OPTIONS} value={vista} onChange={setVista} />
+          {vista === "plataforma" ? (
+            <ProductosTable productos={productos} />
+          ) : (
+            <CatalogoUnificadoTable productos={productos} />
+          )}
         </div>
       )}
     </AppShell>
