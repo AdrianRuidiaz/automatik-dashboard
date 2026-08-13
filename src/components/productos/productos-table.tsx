@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ExternalLink, Search, PackageX } from "lucide-react";
-import { cn, formatCLP, formatRelativo } from "@/lib/utils";
+import { cn, formatRelativo } from "@/lib/utils";
 import type { Producto, PlataformaProducto, EstadoProducto } from "@/lib/types";
 import { EstadoProductoBadge } from "@/components/productos/estado-producto-badge";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
@@ -141,7 +141,6 @@ export function ProductosTable({ productos }: ProductosTableProps) {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span className="tabular">Stock: <span className="font-medium text-foreground">{p.stock ?? "—"}</span></span>
-              <span className="tabular">{p.precio != null ? formatCLP(p.precio) : "—"}</span>
               <span>{formatRelativo(p.ultima_sync)}</span>
             </div>
           </div>
@@ -152,14 +151,13 @@ export function ProductosTable({ productos }: ProductosTableProps) {
       <div className="hidden md:block">
         <div className="card-premium overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] border-collapse text-sm">
+            <table className="w-full min-w-[560px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/40">
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Producto</th>
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Plat.</th>
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Estado</th>
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Stock</th>
-                  <th className="eyebrow px-3 py-2.5 text-left font-medium">Precio</th>
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Link</th>
                   <th className="eyebrow px-3 py-2.5 text-left font-medium">Sync</th>
                 </tr>
@@ -178,7 +176,6 @@ export function ProductosTable({ productos }: ProductosTableProps) {
                     </td>
                     <td className="px-3 py-2.5"><EstadoProductoBadge estado={p.estado} /></td>
                     <td className="tabular px-3 py-2.5">{p.stock ?? "—"}</td>
-                    <td className="tabular whitespace-nowrap px-3 py-2.5">{p.precio != null ? formatCLP(p.precio) : "—"}</td>
                     <td className="px-3 py-2.5">
                       {p.url_publicacion ? (
                         <a
