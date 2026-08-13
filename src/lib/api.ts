@@ -6,6 +6,7 @@ import type {
     Archivo,
     EstadoPedido,
     TipoArchivo,
+    Producto,
 } from "./types";
 
 // NOTA: antes este archivo usaba un NEXT_PUBLIC_CLIENTE_ID fijo, hardcodeado
@@ -399,4 +400,24 @@ export async function actualizarPerfilEmpresa(params: {
 }): Promise<void> {
     const { error } = await supabase.rpc("actualizar_perfil_empresa", params);
     if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------
+// Productos: catalogo ML/Falabella sincronizado cada 15 min por los
+// workflows de n8n "ML - Sync Productos" / "FA - Sync Productos" (ver
+// public.productos). Mismo patron que fetchPedidos: recibe clienteId como
+// parametro (nunca hardcodeado), resuelto en role-context (propio para
+// roles normales, elegible en modo soporte para super_admin).
+// ---------------------------------------------------------------------------
+const LIMITE_PRODUCTOS_DEFAULT = 500;
+
+export async function fetchProductos(clienteId: string): Promise<Producto[]> {
+    const { data, error } = await supabase
+      .from("productos")
+      .select("*")
+      .eq("cliente_id", clienteId)
+      .order("nombre", { ascending: true })
+      .limit(LIMITE_PRODUCTOS_DEFAULT);
+    if (error) throw error;
+    return (data as unknown as Producto[]) ?? [];
 }
