@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { AlertTriangle, Search, PackageX } from "lucide-react";
-import { formatCLP } from "@/lib/utils";
 import type { Producto } from "@/lib/types";
 import { EstadoProductoBadge } from "@/components/productos/estado-producto-badge";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
@@ -257,7 +256,6 @@ function PlataformaCelda({ filas, label }: { filas: Producto[]; label?: string }
         <div key={p.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
           <EstadoProductoBadge estado={p.estado} />
           <span className="tabular text-xs text-muted-foreground">Stock: {p.stock ?? "—"}</span>
-          {p.precio != null && <span className="tabular text-xs text-muted-foreground">{formatCLP(p.precio)}</span>}
         </div>
       ))}
     </div>
