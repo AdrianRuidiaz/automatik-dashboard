@@ -170,6 +170,15 @@ export interface Producto {
     cliente_id: string;
     plataforma: PlataformaProducto;
     sku: string;
+    // Clave de coincidencia entre plataformas: cuando el mismo producto
+    // fisico se vende tanto en ML como en Falabella, ambas filas comparten
+    // el mismo sku_interno (asignado a mano por el dueño, no es el sku ni
+    // el item-id propio de cada plataforma). Nullable: productos sin SKU de
+    // vendedor configurado en el origen (algunas publicaciones ML viejas)
+    // quedan con sku_interno null -- el catalogo unificado (ver
+    // catalogo-unificado-table.tsx) trata cada fila null como su propio
+    // grupo de un solo elemento, nunca la descarta.
+    sku_interno: string | null;
     nombre: string | null;
     estado: EstadoProducto;
     estado_raw: string | null;
