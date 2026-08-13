@@ -147,3 +147,53 @@ export const ESTADOS_ACTIVOS: EstadoPedido[] = [
     "delivered",
     "returned",
   ];
+
+// ---------------------------------------------------------------------------
+// Productos: catalogo de publicaciones (Mercado Libre / Falabella) que
+// mantienen frescos los workflows de n8n "ML - Sync Productos" y "FA - Sync
+// Productos" cada 15 minutos (ver public.productos). A diferencia de
+// Pedido.plataforma ("ML" | "Falabella"), el CHECK constraint real de esta
+// tabla usa literalmente "ML" | "FA" -- por eso PlataformaProducto es un tipo
+// separado de Plataforma, no el mismo valor.
+//
+// nombre/stock/precio son nullable en la base (columnas sin NOT NULL): un
+// sync a mitad de camino, o una publicacion con datos incompletos en el
+// origen, puede dejarlos en null. El frontend debe mostrar un fallback ("—"
+// / "Sin nombre"), nunca asumir que siempre vienen con valor.
+// ---------------------------------------------------------------------------
+export type PlataformaProducto = "ML" | "FA";
+
+export type EstadoProducto = "activo" | "pausado" | "sin_stock" | "cerrado";
+
+export interface Producto {
+    id: string;
+    cliente_id: string;
+    plataforma: PlataformaProducto;
+    sku: string;
+    nombre: string | null;
+    estado: EstadoProducto;
+    estado_raw: string | null;
+    stock: number | null;
+    precio: number | null;
+    url_publicacion: string | null;
+    ultima_sync: string;
+    created_at: string;
+}
+
+export const ESTADO_PRODUCTO_LABELS: Record<EstadoProducto, string> = {
+    activo: "Activo",
+    pausado: "Pausado",
+    sin_stock: "Sin stock",
+    cerrado: "Cerrado",
+};
+
+// Misma convencion de color que ESTADO_COLORS (pedidos): verde = bien, ambar
+// = atencion, gris = neutral/inactivo. sin_stock usa naranja (no rojo) para
+// no confundirlo visualmente con "cancelado"/"devuelto" en la tabla de
+// pedidos -- no es un error, simplemente no hay unidades disponibles ahora.
+export const ESTADO_PRODUCTO_COLORS: Record<EstadoProducto, string> = {
+    activo: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/20",
+    pausado: "bg-amber-500/15 text-amber-300 border border-amber-500/20",
+    sin_stock: "bg-orange-500/15 text-orange-300 border border-orange-500/20",
+    cerrado: "bg-slate-500/15 text-slate-300 border border-slate-500/20",
+};
