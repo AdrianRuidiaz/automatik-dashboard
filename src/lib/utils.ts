@@ -31,6 +31,24 @@ export function formatFechaLarga(fecha: string | null): string {
   });
 }
 
+// Tarea: "ultima_sync" de productos en formato relativo ("hace 5 min").
+// Deliberadamente simple (minutos/horas/dias): los workflows de sync ML/FA
+// corren cada 15 min, asi que en la practica casi todo cae dentro de
+// "hace X min" u "hace X h" -- no vale la pena cubrir semanas/meses/años
+// para un dato que en teoria nunca deberia envejecer tanto (si lo hace, es
+// una señal de que el sync dejo de correr, mas que un problema de formato).
+export function formatRelativo(fecha: string | null): string {
+  if (!fecha) return "—";
+  const diffMs = Date.now() - new Date(fecha).getTime();
+  if (diffMs < 0 || diffMs < 60_000) return "recién";
+  const minutos = Math.floor(diffMs / 60_000);
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return `hace ${dias} d`;
+}
+
 // Parseo deliberadamente simple del user_agent que guarda auth.sessions.
 // No pretende ser exhaustivo (no cubre cada navegador/SO existente) pero
 // cubre los casos reales que va a tener el equipo: Windows/Mac/Linux en
