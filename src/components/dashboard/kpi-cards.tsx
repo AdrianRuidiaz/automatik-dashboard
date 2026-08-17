@@ -112,6 +112,10 @@ export function KpiCards({ data, previousData }: KpiCardsProps) {
       icon: XCircle, label: "Cancelados", rawValue: data.cancelados, format: (n: number) => String(Math.round(n)),
       sub: `${formatCLP(data.monto_cancelados)} excl.`,
       tone: data.cancelados > 0 ? ("danger" as const) : ("neutral" as const),
+      // Tarea: hacer la tarjeta clickeable. Lleva a la lista de pedidos con
+      // el filtro "Cancelado" ya aplicado -- mismo estado que activa el
+      // boton "Ver cancelados" dentro de orders-table.tsx.
+      href: "/pedidos?filtro=cancelled",
       previo: previousData?.cancelados, direccionBuena: "baja" as const,
     },
   ];
