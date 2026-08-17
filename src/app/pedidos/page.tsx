@@ -18,13 +18,18 @@ export default function PedidosPage() {
   const [tabEmpacador, setTabEmpacador] = useState<"pendientes" | "historial">("pendientes");
 
   // Filtro inicial de la tabla (admin) cuando se llega desde un link como el
-  // de la tarjeta KPI "Por despachar" del dashboard (?filtro=por_despachar).
+  // de las tarjetas KPI "Por despachar" (?filtro=por_despachar) o
+  // "Cancelados" (?filtro=cancelled) del dashboard. "cancelled" reutiliza el
+  // mismo estadoFilter="cancelled" que ya aplica el boton interno "Ver
+  // cancelados" de orders-table.tsx.
   // Se lee via window.location en un efecto (no en el render) para no
   // romper la hidratacion -- mismo patron que getNext() en app/login.
-  const [filtroInicial, setFiltroInicial] = useState<"all" | "por_despachar">("all");
+  const [filtroInicial, setFiltroInicial] = useState<"all" | "por_despachar" | "cancelled">("all");
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("filtro") === "por_despachar") setFiltroInicial("por_despachar");
+    const filtro = params.get("filtro");
+    if (filtro === "por_despachar") setFiltroInicial("por_despachar");
+    else if (filtro === "cancelled") setFiltroInicial("cancelled");
   }, []);
 
   const loadData = useCallback(async () => {
