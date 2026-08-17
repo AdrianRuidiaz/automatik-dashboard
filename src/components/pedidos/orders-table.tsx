@@ -18,8 +18,16 @@ import { EstadoVacio } from "@/components/ui/estado-vacio";
 // de pedido.estado. Combina "paid" + "ready_to_ship" -- lo mismo que cuenta
 // la tarjeta KPI "Por despachar" del dashboard (ver kpi-cards.tsx /
 // fetchDashboardResumen). Se linkea aca via ?filtro=por_despachar.
+//
+// Caso especial pedido por el negocio: los pedidos Falabella en estado
+// "pending" tambien cuentan como "por despachar" (Falabella los reporta asi
+// via GetOrder/Status y el dueno los quiere ver en el bucket de despacho).
+// Esto es SOLO para Falabella -- no aplica a ML. Ver esFalabellaPending()
+// mas abajo y su equivalente en la RPC public.dashboard_kpis_rango, que
+// debe coincidir exactamente con esta regla.
 type EstadoFilterValue = "all" | "por_despachar" | EstadoPedido;
 const ESTADOS_QUE_CUENTAN_POR_DESPACHAR: EstadoPedido[] = ["paid", "ready_to_ship"];
+const esFalabellaPending = (p: Pedido) => p.plataforma === "Falabella" && p.estado === "pending";
 
 interface OrdersTableProps {
   pedidos: Pedido[];
@@ -105,7 +113,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
     if (estadoFilter === "all") {
       data = data.filter((p) => p.estado !== "cancelled");
     } else if (estadoFilter === "por_despachar") {
-      data = data.filter((p) => ESTADOS_QUE_CUENTAN_POR_DESPACHAR.includes(p.estado));
+      data = data.filter((p) => ESTADOS_QUE_CUENTAN_POR_DESPACHAR.includes(p.estado) || esFalabellaPending(p));
     } else {
       data = data.filter((p) => p.estado === estadoFilter);
     }
