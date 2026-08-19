@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { OrdersTable } from "@/components/pedidos/orders-table";
 import { PackingCard } from "@/components/empacador/packing-card";
@@ -8,7 +8,7 @@ import { PackingHistory } from "@/components/empacador/packing-history";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { fetchPedidos } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
-import { supabase } from "@/lib/supabase";
+import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
 import { cn } from "@/lib/utils";
 import type { Pedido, RolUsuario } from "@/lib/types";
 
@@ -49,21 +49,14 @@ export default function PedidosPage() {
   // en pocos segundos -- cada UPDATE dispara el callback y sin proteccion
   // se hacen N recargas completas en cadena. Se agrupan con un debounce:
   // solo se recarga una vez, 800ms despues del ultimo cambio detectado.
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!clienteId) return;
-    const ch = supabase
-      .channel("pedidos-table-rt")
-      .on("postgres_changes", { event: "*", schema: "public", table: "pedidos", filter: `cliente_id=eq.${clienteId}` }, () => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => loadData(), 800);
-      })
-      .subscribe();
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      supabase.removeChannel(ch);
-    };
-  }, [loadData, clienteId]);
+  // (extraido a src/lib/hooks/use-realtime-table.ts -- mismo canal, tabla,
+  // filtro y debounce que antes, solo cambia la ubicacion del codigo)
+  useRealtimeTable({
+    table: "pedidos",
+    clienteId,
+    onChange: loadData,
+    channelName: "pedidos-table-rt",
+  });
 
   const pendientes = pedidos.filter((p) =>
     ["pending", "paid", "ready_to_ship"].includes(p.estado)
