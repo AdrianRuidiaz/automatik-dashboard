@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useState, useMemo, useEffect, useRef } from "react";
 import {
   useReactTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel, getPaginationRowModel, flexRender,
   type ColumnDef, type SortingState,
@@ -410,8 +410,8 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
               </thead>
               <tbody>
                 {table.getRowModel().rows.map((row) => (
-                  <>
-                    <tr key={row.id} className="row-hover cursor-pointer border-b border-border last:border-0 hover:bg-secondary/40"
+                  <Fragment key={row.id}>
+                    <tr className="row-hover cursor-pointer border-b border-border last:border-0 hover:bg-secondary/40"
                       onClick={() => toggleRow(row.original.id)}>
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-3 py-2.5">
@@ -420,13 +420,13 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
                       ))}
                     </tr>
                     {expandedRows.has(row.original.id) && (
-                      <tr key={row.id + "-d"}>
+                      <tr>
                         <td colSpan={columns.length} className="border-b border-border p-0">
                           <OrderDetail pedido={row.original} />
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
               </tbody>
             </table>
