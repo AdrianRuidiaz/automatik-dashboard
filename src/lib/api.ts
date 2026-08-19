@@ -136,6 +136,23 @@ export async function fetchArchivos(pedidoId: string): Promise<Archivo[]> {
     return (data as unknown as Archivo[]) ?? [];
 }
 
+// Tarea: evitar patron N+1. TaxDocsTable (vendedor) necesitaba los
+// documentos tributarios de hasta 60 pedidos a la vez para poder mostrar
+// "Sin documento" / badges por fila; antes eso disparaba 60 llamadas a
+// fetchArchivos en paralelo (Promise.all + slice(0,60).map). Esta funcion
+// trae los archivos de TODOS los pedidos pedidos en una sola query via
+// .in("pedido_id", ids) -- el llamador agrupa el resultado por pedido_id.
+export async function fetchArchivosPorPedidos(pedidoIds: string[]): Promise<Archivo[]> {
+    if (pedidoIds.length === 0) return [];
+    const { data, error } = await supabase
+      .from("archivos")
+      .select("*, subido_por_usuario:usuarios_roles!archivos_subido_por_fkey(nombre)")
+      .in("pedido_id", pedidoIds)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data as unknown as Archivo[]) ?? [];
+}
+
 export async function uploadArchivo(
     bucket: string,
     path: string,
