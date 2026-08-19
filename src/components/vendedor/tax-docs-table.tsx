@@ -6,7 +6,7 @@ import {
   Package, Info, Camera, FileText, Search, History, Ban,
 } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
-import { uploadArchivo, registrarArchivo, fetchArchivos } from "@/lib/api";
+import { uploadArchivo, registrarArchivo, fetchArchivos, fetchArchivosPorPedidos } from "@/lib/api";
 import {
   esDocumentoTributario,
   TIPOS_DOCUMENTO_TRIBUTARIO,
@@ -162,18 +162,29 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
     });
   };
 
+  // Tarea: evitar patron N+1. Antes esto disparaba hasta 60 requests en
+  // paralelo (uno por pedido via fetchArchivos + Promise.all). Ahora es una
+  // sola query (fetchArchivosPorPedidos con .in("pedido_id", ids)) que se
+  // agrupa por pedido_id aca mismo. Si la query completa falla, se deja
+  // `docs` en {} para esos pedidos (equivalente al catch por-pedido de
+  // antes, que dejaba [] para el pedido que fallaba).
   useEffect(() => {
     let cancel = false;
     (async () => {
-      const entries = await Promise.all(
-        pedidos.slice(0, 60).map(async (p) => {
-          try {
-            const arch = await fetchArchivos(p.id);
-            return [p.id, arch.filter((a) => esDocumentoTributario(a.tipo))] as const;
-          } catch { return [p.id, [] as Archivo[]] as const; }
-        })
-      );
-      if (!cancel) setDocs(Object.fromEntries(entries));
+      const idsPedidos = pedidos.slice(0, 60).map((p) => p.id);
+      const agrupado: Record<string, Archivo[]> = {};
+      for (const id of idsPedidos) agrupado[id] = [];
+      try {
+        const archivos = await fetchArchivosPorPedidos(idsPedidos);
+        for (const a of archivos) {
+          if (esDocumentoTributario(a.tipo) && agrupado[a.pedido_id]) {
+            agrupado[a.pedido_id].push(a);
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      if (!cancel) setDocs(agrupado);
     })();
     return () => { cancel = true; };
   }, [pedidos]);
