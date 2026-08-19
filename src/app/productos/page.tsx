@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/layout/app-shell";
 import { ProductosTable } from "@/components/productos/productos-table";
 import { CatalogoUnificadoTable } from "@/components/productos/catalogo-unificado-table";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
 import { fetchProductos } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
-import { supabase } from "@/lib/supabase";
+import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
 import type { Producto } from "@/lib/types";
 
 type VistaProductos = "plataforma" | "catalogo";
@@ -49,25 +49,14 @@ export default function ProductosPage() {
   // `productos` como prop y cada una arma su propia derivacion (filtro
   // plano vs. agrupado por sku_interno) con useMemo, sin duplicar el fetch
   // ni el channel de Realtime al cambiar de vista.
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!clienteId) return;
-    const ch = supabase
-      .channel("productos-table-rt")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "productos", filter: `cliente_id=eq.${clienteId}` },
-        () => {
-          if (debounceRef.current) clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => loadData(), 800);
-        }
-      )
-      .subscribe();
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      supabase.removeChannel(ch);
-    };
-  }, [loadData, clienteId]);
+  // (extraido a src/lib/hooks/use-realtime-table.ts -- mismo canal, tabla,
+  // filtro y debounce que antes, solo cambia la ubicacion del codigo)
+  useRealtimeTable({
+    table: "productos",
+    clienteId,
+    onChange: loadData,
+    channelName: "productos-table-rt",
+  });
 
   return (
     <AppShell>
