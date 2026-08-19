@@ -39,13 +39,23 @@ export function EquipoManager() {
   const cargar = useCallback(async () => {
     if (!clienteId) return;
     setCargando(true);
-    const { data } = await supabase
-      .from("usuarios_roles")
-      .select("id, nombre, email, rol, activo, created_at, auth_user_id")
-      .eq("cliente_id", clienteId)
-      .order("created_at", { ascending: false });
-    setUsuarios((data as UsuarioRol[]) || []);
-    setCargando(false);
+    try {
+      const { data, error } = await supabase
+        .from("usuarios_roles")
+        .select("id, nombre, email, rol, activo, created_at, auth_user_id")
+        .eq("cliente_id", clienteId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setUsuarios((data as UsuarioRol[]) || []);
+    } catch (err) {
+      console.error("No se pudo cargar el equipo:", err);
+      setMensaje({
+        tipo: "error",
+        texto: err instanceof Error ? err.message : "No se pudo cargar el equipo",
+      });
+    } finally {
+      setCargando(false);
+    }
   }, [clienteId]);
 
   useEffect(() => { cargar(); }, [cargar]);
