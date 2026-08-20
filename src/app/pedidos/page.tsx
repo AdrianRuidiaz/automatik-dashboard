@@ -25,11 +25,27 @@ export default function PedidosPage() {
   // Se lee via window.location en un efecto (no en el render) para no
   // romper la hidratacion -- mismo patron que getNext() en app/login.
   const [filtroInicial, setFiltroInicial] = useState<"all" | "por_despachar" | "cancelled">("all");
+
+  // Tarea #75 (deep links multi-pedido): cuando un push agrupa VARIOS
+  // pedidos (ej. "3 pedidos urgentes: vencen hoy" o varias anomalias del
+  // chequeo de salud), el link ya no puede apuntar a un solo /pedidos/{id}.
+  // ?ids=uuid1,uuid2,uuid3 (separados por coma) filtra esta tabla para
+  // mostrar SOLO esos pedidos puntuales, ignorando cualquier otro filtro
+  // activo (estado/plataforma/fecha) -- mismo patron de lectura de query
+  // param via window.location que filtroInicial arriba. Un solo id en la
+  // lista funciona igual (muestra ese unico pedido).
+  const [idsFiltro, setIdsFiltro] = useState<string[] | null>(null);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const filtro = params.get("filtro");
     if (filtro === "por_despachar") setFiltroInicial("por_despachar");
     else if (filtro === "cancelled") setFiltroInicial("cancelled");
+
+    const ids = params.get("ids");
+    if (ids) {
+      const lista = ids.split(",").map((id) => id.trim()).filter(Boolean);
+      if (lista.length > 0) setIdsFiltro(lista);
+    }
   }, []);
 
   const loadData = useCallback(async () => {
@@ -74,7 +90,7 @@ export default function PedidosPage() {
                   Todos los <em>pedidos</em>
                 </h1>
               </div>
-              <OrdersTable pedidos={pedidos} initialEstadoFilter={filtroInicial} />
+              <OrdersTable pedidos={pedidos} initialEstadoFilter={filtroInicial} filtroIds={idsFiltro} />
             </div>
           )}
 
