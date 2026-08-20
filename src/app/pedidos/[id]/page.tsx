@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Package, Info } from "lucide-react";
 import { fetchPedido } from "@/lib/api";
@@ -8,6 +8,7 @@ import { formatCLP, formatFechaLarga, cn } from "@/lib/utils";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 import type { Pedido } from "@/lib/types";
 import { Navbar } from "@/components/layout/navbar";
+import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
@@ -17,14 +18,36 @@ export default function PedidoDetailPage() {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [cargando, setCargando] = useState(true);
 
-  useEffect(() => {
-    if (params.id) {
-      fetchPedido(params.id as string)
-        .then(setPedido)
-        .catch(console.error)
-        .finally(() => setCargando(false));
-    }
+  const cargarPedido = useCallback(() => {
+    if (!params.id) return;
+    fetchPedido(params.id as string)
+      .then(setPedido)
+      .catch(console.error)
+      .finally(() => setCargando(false));
   }, [params.id]);
+
+  useEffect(() => {
+    cargarPedido();
+  }, [cargarPedido]);
+
+  // Tarea: "100% en vivo". Esta vista de detalle no tenia NINGUN mecanismo
+  // de actualizacion -- cargaba una vez al montar y nunca mas, a diferencia
+  // del dashboard/pedidos/productos que ya usan useRealtimeTable. Se
+  // suscribe al mismo hook compartido, filtrado por cliente_id (unico
+  // filtro que soporta el hook, pensado originalmente para listas). Como
+  // esta vista muestra UN solo pedido, onChange no recarga una lista: vuelve
+  // a pedir este mismo pedido (cargarPedido, que ya conoce su id por la URL)
+  // para traer su estado actualizado. clienteId sale de pedido.cliente_id --
+  // mientras el pedido no haya cargado la primera vez el hook no se
+  // suscribe, igual que en las otras 3 vistas antes de resolver el
+  // cliente_id. Con esto la vista se beneficia de reconexion con backoff y
+  // de refresh-on-focus (visibilitychange/focus) igual que las demas.
+  useRealtimeTable({
+    table: "pedidos",
+    clienteId: pedido?.cliente_id,
+    onChange: cargarPedido,
+    channelName: "pedido-detalle-rt",
+  });
 
   return (
     <div>
