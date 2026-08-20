@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 // Tarea: extraer el patron de suscripcion Realtime repetido en app/page.tsx,
 // app/pedidos/page.tsx y app/productos/page.tsx (canal + postgres_changes
@@ -24,6 +25,29 @@ import { supabase } from "@/lib/supabase";
 // proteccion se hacen N recargas completas en cadena. Se agrupan con un
 // debounce: solo se recarga una vez, `debounceMs` (default 800) despues del
 // ultimo cambio detectado.
+//
+// IMPORTANTE (reconexion + refresh-on-focus, "100% en vivo"): antes
+// .subscribe() se llamaba sin callback de estado -- si el websocket se
+// caia (laptop suspendida, wifi cortado, pestana mucho tiempo en
+// background), el canal quedaba muerto para siempre sin reintentar, y nada
+// se enteraba. Dos capas de proteccion, independientes entre si:
+//   1. Reconexion: el callback de .subscribe(status) detecta CLOSED /
+//      CHANNEL_ERROR / TIMED_OUT y vuelve a crear + suscribir el canal, con
+//      backoff exponencial simple (2s, 4s, 8s, ... tope en
+//      RECONNECT_MAX_DELAY_MS) y un limite de intentos para no loopear
+//      infinito si el problema es de fondo (Supabase caido, etc). El
+//      contador de intentos se resetea apenas se logra un SUBSCRIBED.
+//   2. Refresh-on-focus: es la red de seguridad MAS importante, porque
+//      cubre el caso en que la reconexion de arriba tambien falle por
+//      cualquier motivo. Al volver a la pestana (visibilitychange a
+//      "visible", o evento focus de window) se dispara el mismo
+//      scheduleChange() debounced que ya usan los postgres_changes -- osea
+//      el usuario nunca ve datos viejos al volver a mirar la pantalla,
+//      incluso si el realtime quedo mudo.
+const RECONNECT_BASE_DELAY_MS = 2000;
+const RECONNECT_MAX_DELAY_MS = 30000;
+const RECONNECT_MAX_ATTEMPTS = 8;
+
 export interface UseRealtimeTableOptions {
   /** Tabla de Supabase a escuchar (ej. "pedidos", "productos"). */
   table: string;
@@ -54,20 +78,66 @@ export function useRealtimeTable({
 
   useEffect(() => {
     if (!clienteId) return;
-    const ch = supabase
-      .channel(channelName)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table, filter: `cliente_id=eq.${clienteId}` },
-        () => {
-          if (debounceRef.current) clearTimeout(debounceRef.current);
-          debounceRef.current = setTimeout(() => onChange(), debounceMs);
-        }
-      )
-      .subscribe();
-    return () => {
+
+    let unmounted = false;
+    let channel: RealtimeChannel | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const scheduleChange = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      supabase.removeChannel(ch);
+      debounceRef.current = setTimeout(() => onChange(), debounceMs);
+    };
+
+    const subscribe = () => {
+      if (unmounted) return;
+      channel = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table, filter: `cliente_id=eq.${clienteId}` },
+          () => scheduleChange()
+        )
+        .subscribe((status) => {
+          if (unmounted) return;
+          if (status === "SUBSCRIBED") {
+            // Conexion sana: resetea el contador de reintentos.
+            attempts = 0;
+            return;
+          }
+          if (status === "CLOSED" || status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            if (attempts >= RECONNECT_MAX_ATTEMPTS) return;
+            const delay = Math.min(
+              RECONNECT_BASE_DELAY_MS * 2 ** attempts,
+              RECONNECT_MAX_DELAY_MS
+            );
+            attempts += 1;
+            if (reconnectTimeout) clearTimeout(reconnectTimeout);
+            reconnectTimeout = setTimeout(() => {
+              if (unmounted) return;
+              if (channel) supabase.removeChannel(channel);
+              subscribe();
+            }, delay);
+          }
+        });
+    };
+
+    subscribe();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") scheduleChange();
+    };
+    const handleFocus = () => scheduleChange();
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      unmounted = true;
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("focus", handleFocus);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (channel) supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, clienteId, onChange, channelName, debounceMs]);
