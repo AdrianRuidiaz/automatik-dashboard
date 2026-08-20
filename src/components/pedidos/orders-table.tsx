@@ -33,6 +33,15 @@ interface OrdersTableProps {
   pedidos: Pedido[];
   /** Filtro de estado inicial (ej. llegando desde el link de la tarjeta KPI). Default "all". */
   initialEstadoFilter?: EstadoFilterValue;
+  /**
+   * Tarea #75: ids especificos a mostrar (ej. ?ids=uuid1,uuid2,uuid3 desde
+   * un push que agrupa varios pedidos urgentes o varias anomalias del
+   * chequeo de salud). Cuando esta presente y no vacio, la tabla muestra
+   * SOLO estos pedidos (match por el id interno de Supabase) e ignora
+   * cualquier otro filtro activo (estado/plataforma/fecha). Un solo id en
+   * la lista funciona igual, mostrando unicamente ese pedido.
+   */
+  filtroIds?: string[] | null;
 }
 
 const ESTADOS_FILTER: { key: EstadoFilterValue; label: string }[] = [
@@ -48,7 +57,7 @@ const ESTADOS_FILTER: { key: EstadoFilterValue; label: string }[] = [
   { key: "returned", label: "Devuelto" },
 ];
 
-export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTableProps) {
+export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = null }: OrdersTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [platformFilter, setPlatformFilter] = useState<"all" | Plataforma>("all");
@@ -105,6 +114,16 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
   };
 
   const filtered = useMemo(() => {
+    // Tarea #75: ?ids=... manda por sobre cualquier otro filtro -- se usa
+    // para deep links de push que agrupan varios pedidos puntuales (ej.
+    // "3 pedidos urgentes: vencen hoy"), asi que el resultado debe ser
+    // exactamente esos pedidos, sin importar estado/plataforma/fecha
+    // seleccionados en la tabla.
+    if (filtroIds && filtroIds.length > 0) {
+      const idsSet = new Set(filtroIds);
+      return pedidos.filter((p) => idsSet.has(p.id));
+    }
+
     let data = pedidos;
     // Tarea: manejo de pedidos cancelados. "Todos" en el filtro de estado
     // significa "todos los pedidos activos": los cancelados nunca se
@@ -129,7 +148,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all" }: OrdersTabl
       data = data.filter((p) => p.fecha_pedido && new Date(p.fecha_pedido) <= hasta);
     }
     return data;
-  }, [pedidos, platformFilter, estadoFilter, fechaDesde, fechaHasta]);
+  }, [pedidos, platformFilter, estadoFilter, fechaDesde, fechaHasta, filtroIds]);
 
   const columns: ColumnDef<Pedido>[] = useMemo(() => [
     {
