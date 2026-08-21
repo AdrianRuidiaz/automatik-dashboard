@@ -74,8 +74,15 @@ export default function PedidosPage() {
     channelName: "pedidos-table-rt",
   });
 
-  const pendientes = pedidos.filter((p) =>
-    ["pending", "paid", "ready_to_ship"].includes(p.estado)
+  // Tarea: esta vista duplica la cola de empacador que ya existe en
+  // app/page.tsx ("/") -- mismo criterio debe aplicar en las dos. Antes
+  // filtraba por estado in (pending, paid, ready_to_ship), lo que la volvia
+  // a romper con una resincronizacion externa (ver comentario largo en
+  // app/page.tsx): pedidos.empacado_en (llenado solo por POST
+  // /api/pedidos/[id]/empacar) es la unica fuente de verdad de si ya se
+  // empaco en Automatik.
+  const pendientes = pedidos.filter(
+    (p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado)
   );
 
   return (
