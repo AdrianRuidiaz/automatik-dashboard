@@ -74,14 +74,24 @@ export default function HomePage() {
     channelName: "pedidos-realtime",
   });
 
+  // Tarea: la cola "Por empacar" y el "Historial" del empacador se separaban
+  // por pedidos.estado -- eso se rompia en cuanto algo MAS que el empacador
+  // tambien tocaba estado. Concretamente: los workflows de n8n resincronizan
+  // el estado real desde ML/Falabella cada pocos minutos, y si la plataforma
+  // ya reportaba "shipped" (aunque en Automatik nadie hubiera subido
+  // evidencia ni presionado "Marcar como empacado"), el pedido desaparecia
+  // solo de la cola. Ahora la unica fuente de verdad de "ya se empaco en
+  // Automatik" es pedidos.empacado_en (lo llena solo POST
+  // /api/pedidos/[id]/empacar) -- pedidos.estado puede seguir cambiando
+  // libremente por sync externo sin sacar nada de la cola antes de tiempo.
   const pendientes = useMemo(
-    () => pedidos.filter((p) => ["pending", "paid", "ready_to_ship"].includes(p.estado)),
+    () => pedidos.filter((p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado)),
     [pedidos]
   );
 
   const historial = useMemo(
     () => pedidos
-      .filter((p) => ["shipped", "delivered"].includes(p.estado))
+      .filter((p) => !!p.empacado_en)
       .sort((a, b) => new Date(b.fecha_pedido ?? "").getTime() - new Date(a.fecha_pedido ?? "").getTime()),
     [pedidos]
   );
