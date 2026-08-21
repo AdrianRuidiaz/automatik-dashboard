@@ -71,9 +71,21 @@ export async function POST(
       );
     }
 
+    // Tarea: empacado_en (no estado) es lo que saca al pedido de la cola
+    // "Por empacar" (ver src/app/page.tsx). Antes solo se movia `estado` a
+    // "ready_to_ship" -- eso funcionaba mientras nada mas tocara estado,
+    // pero un pedido que ya llegaba "shipped" desde una resincronizacion de
+    // n8n (ML/Falabella ya lo reportan enviado) desaparecia de la cola sin
+    // que el empacador hubiera confirmado nunca el empaque. Se sigue
+    // actualizando estado igual (sirve para el resto de la app: dashboard,
+    // /pedidos, etc.), pero la cola ya no depende de el.
     const { error: errorUpdate } = await supabaseAdmin
       .from("pedidos")
-      .update({ estado: "ready_to_ship", updated_at: new Date().toISOString() })
+      .update({
+        estado: "ready_to_ship",
+        empacado_en: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", pedidoId);
 
     if (errorUpdate) throw errorUpdate;
