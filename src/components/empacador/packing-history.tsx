@@ -142,14 +142,16 @@ export function PackingHistory({ pedidos }: PackingHistoryProps) {
     });
   };
 
-  // Igual que en las demás vistas: los pedidos empacados/entregados son
-  // pedidos activos. Si uno fue cancelado después de empacarse no debería
-  // seguir apareciendo mezclado en este historial de operación.
+  // Tarea: empacado_en (no estado) es la fuente de verdad de "ya se empaco
+  // en Automatik" -- mismo criterio que src/app/page.tsx. Antes filtraba por
+  // estado in (shipped, delivered), lo que sacaba pedidos de este historial
+  // (o los metia) segun lo que reportara la resincronizacion de ML/Falabella,
+  // sin relacion con si el empacador realmente confirmo el empaque.
   const completados = pedidos
-    .filter((p) => ["shipped", "delivered"].includes(p.estado))
+    .filter((p) => !!p.empacado_en)
     .sort((a, b) => {
-      const da = a.updated_at || a.fecha_pedido || "";
-      const db = b.updated_at || b.fecha_pedido || "";
+      const da = a.empacado_en || a.updated_at || a.fecha_pedido || "";
+      const db = b.empacado_en || b.updated_at || b.fecha_pedido || "";
       return db.localeCompare(da);
     });
 
