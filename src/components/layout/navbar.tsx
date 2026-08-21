@@ -9,6 +9,11 @@ import { cn } from "@/lib/utils";
 import { useInstallPrompt } from "@/lib/pwa-install";
 import { useState, useRef, useEffect } from "react";
 
+// Tarea: el vendedor solo necesita "Ventas" (documentos tributarios / pedido
+// manual, ver app/page.tsx). No usa la tabla completa de pedidos (esa vista
+// ya le muestra a el lo mismo que "Ventas" si entra por URL directa -- ver
+// app/pedidos/page.tsx, rama rol === "vendedor") ni el catalogo de
+// productos, asi que esos dos links solo eran ruido en su navbar.
 const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   admin: [
     { label: "Dashboard", href: "/" },
@@ -17,8 +22,6 @@ const NAV_ITEMS: Record<RolUsuario, { label: string; href: string }[]> = {
   ],
   vendedor: [
     { label: "Ventas", href: "/" },
-    { label: "Pedidos", href: "/pedidos" },
-    { label: "Productos", href: "/productos" },
   ],
   empacador: [],
 };
