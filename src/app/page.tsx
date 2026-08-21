@@ -6,6 +6,7 @@ import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { KpiRangeFilter } from "@/components/dashboard/kpi-range-filter";
 import { TrendChart } from "@/components/dashboard/trend-chart";
 import { PackingCard } from "@/components/empacador/packing-card";
+import { PackingHistory } from "@/components/empacador/packing-history";
 import { SearchBar } from "@/components/empacador/search-bar";
 import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { ManualOrderForm } from "@/components/vendedor/manual-order-form";
@@ -16,7 +17,7 @@ import { RANGO_KPI_DEFAULT, calcularRangoFechas, type RangoKpi } from "@/lib/dat
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowRight, FileText, RefreshCw, AlertTriangle, CheckCircle, Clock, Package, Inbox, PackageCheck, ClipboardList } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw, AlertTriangle, Clock, Package, Inbox, PackageCheck } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
 
@@ -342,46 +343,15 @@ export default function HomePage() {
 
               {empacadorTab === "historial" && (
                 <div className="mt-3">
-                  {historial.length === 0 ? (
-                    <EstadoVacio icon={ClipboardList} texto="Aun no hay pedidos entregados" />
-                  ) : (
-                    <div className="space-y-2">
-                      {historial.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 sm:p-4"
-                        >
-                          <CheckCircle className="h-5 w-5 shrink-0 text-emerald-500" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="tabular text-sm font-semibold">{p.id_plataforma}</span>
-                              <span
-                                className={cn(
-                                  "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                                  p.plataforma === "ML" ? "bg-ml-light text-ml-dark" : "bg-fa-light text-fa-dark"
-                                )}
-                              >
-                                {p.plataforma === "ML" ? "ML" : "FA"}
-                              </span>
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {(p.items ?? []).length > 0
-                                ? (p.items ?? []).map((it) => it.title).join(", ")
-                                : p.cliente_nombre || "Sin detalle"}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <span className={cn("pill text-[10px]", ESTADO_COLORS[p.estado])}>
-                              {ESTADO_LABELS[p.estado]}
-                            </span>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              {formatFechaCorta(p.fecha_pedido ?? "")}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Tarea: el empacador puede VER las evidencias que ya
+                      subio (galeria + lightbox dentro de PackingHistory),
+                      pero no puede reemplazarlas ni eliminarlas -- esa
+                      capacidad esta reservada a admin/vendedor/super_admin
+                      tanto en el RLS de public.archivos (policies "admin y
+                      vendedor actualizan/eliminan archivos") como en la UI:
+                      PackingHistory no incluye ningun control de editar o
+                      borrar, solo el visor con lightbox. */}
+                  <PackingHistory pedidos={historial} />
                 </div>
               )}
             </div>
