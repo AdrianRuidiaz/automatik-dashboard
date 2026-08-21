@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronDown, ChevronRight, Camera, Package, CheckCircle, Clock, Search, UserCheck } from "lucide-react";
-import { cn, formatCLP, formatFechaCorta, formatFechaLarga } from "@/lib/utils";
+import { cn, formatCLP, formatFechaCorta } from "@/lib/utils";
 import { fetchArchivos } from "@/lib/api";
 import type { Pedido, Archivo } from "@/lib/types";
 
