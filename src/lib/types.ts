@@ -75,6 +75,13 @@ export interface Pedido {
     cancelado_por?: string | null;
     cancelado_en?: string | null;
     cancelado_por_usuario?: UsuarioRef | null;
+    // Tarea: la cola "Por empacar" del empacador NO debe depender de
+    // pedidos.estado -- una resincronizacion de n8n (ej. ML ya reporta
+    // "shipped") no significa que el empacador haya subido evidencia ni
+    // presionado "Marcar como empacado". empacado_en es la unica fuente de
+    // verdad de eso: la llena exclusivamente POST /api/pedidos/[id]/empacar,
+    // nunca un sync externo. null = todavia no se ha empacado en Automatik.
+    empacado_en?: string | null;
 }
 
 export interface Archivo {
