@@ -102,6 +102,19 @@ export function OrderDetail({ pedido }: { pedido: Pedido }) {
             </p>
           )}
 
+          {/* Tarea (2026-08-24): motivo real de cancelacion entregado por la
+              plataforma de origen (ML manda cancel_detail; Falabella no
+              expone motivo en su API, asi que para pedidos FA este bloque
+              simplemente no aparece). Es independiente del bloque de arriba:
+              una cancelacion detectada por el sync automatico de n8n no
+              tiene cancelado_por_usuario (nadie del equipo la disparo desde
+              aca) pero si puede traer motivo_cancelacion. */}
+          {pedido.estado === "cancelled" && pedido.motivo_cancelacion && (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Motivo: <span className="text-foreground">{pedido.motivo_cancelacion}</span>
+            </p>
+          )}
+
           <div className="mt-4">
             <h4 className="mb-2 flex items-center gap-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
               <Package className="h-3 w-3" /> Items

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, FileText, Package, Info } from "lucide-react";
+import { ArrowLeft, Ban, FileText, Package, Info } from "lucide-react";
 import { fetchPedido } from "@/lib/api";
 import { formatCLP, formatFechaLarga, cn } from "@/lib/utils";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
@@ -77,6 +77,31 @@ export default function PedidoDetailPage() {
                   </span>
                   <span className={cn("pill", ESTADO_COLORS[pedido.estado])}>{ESTADO_LABELS[pedido.estado]}</span>
                 </div>
+                {/* Tarea (2026-08-24): esta pagina es el destino directo del
+                    link "url" que manda el push de "pedido cancelado" -- antes
+                    no mostraba absolutamente nada sobre la cancelacion, asi que
+                    quien tocaba la notificacion llegaba aca sin ver el motivo
+                    que ya vio en el texto del push. motivo_cancelacion viene
+                    null para Falabella (su API no lo entrega) y para pedidos
+                    cancelados antes de que existiera esta columna -- en esos
+                    casos simplemente no se muestra la segunda linea. */}
+                {pedido.estado === "cancelled" && (pedido.motivo_cancelacion || pedido.cancelado_por_usuario) && (
+                  <div className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" />
+                    <p>
+                      {pedido.cancelado_por_usuario && (
+                        <>
+                          Cancelado por <span className="font-medium text-foreground">{pedido.cancelado_por_usuario.nombre}</span>
+                          {pedido.cancelado_en && <> el {formatFechaLarga(pedido.cancelado_en)}</>}
+                          {pedido.motivo_cancelacion && ". "}
+                        </>
+                      )}
+                      {pedido.motivo_cancelacion && (
+                        <>Motivo: <span className="text-foreground">{pedido.motivo_cancelacion}</span></>
+                      )}
+                    </p>
+                  </div>
+                )}
               </div>
               {pedido.etiqueta_url ? (
                 <a href={pdfUrl(pedido.etiqueta_url)} target="_blank" rel="noopener noreferrer"
