@@ -75,15 +75,6 @@ export interface Pedido {
     cancelado_por?: string | null;
     cancelado_en?: string | null;
     cancelado_por_usuario?: UsuarioRef | null;
-    // Tarea (2026-08-24): motivo real de la cancelacion segun la plataforma de
-    // origen. Mercado Libre lo entrega via cancel_detail (ej. "El plazo de
-    // pago supero los 20 dias (cancelado por Mercado Libre)"). Falabella no
-    // expone un campo equivalente en su API (ni el webhook ni GetOrder traen
-    // un motivo, solo el nuevo estado), asi que para pedidos FA este campo
-    // queda null aunque el pedido si este cancelado. Tambien null para
-    // pedidos cancelados antes de que existiera esta columna, o cancelados a
-    // mano desde este dashboard (ver cancelado_por_usuario para ese caso).
-    motivo_cancelacion?: string | null;
     // Tarea: la cola "Por empacar" del empacador NO debe depender de
     // pedidos.estado -- una resincronizacion de n8n (ej. ML ya reporta
     // "shipped") no significa que el empacador haya subido evidencia ni
