@@ -288,33 +288,74 @@ export async function cancelarPedido(pedidoId: string, canceladoPor?: string | n
     if (error) throw error;
 }
 
-export interface UpsertPedidoResultado {
+export interface CrearPedidoManualResultado {
     pedido_id: string;
-    is_new: boolean;
-    action: "created" | "updated";
 }
 
-export async function upsertPedido(params: {
-    p_cliente_id: string;
-    p_plataforma: string;
-    p_id_plataforma: string;
-    p_order_id: string;
-    p_estado: string;
-    p_cliente_nombre: string | null;
-    p_total_pagado: number;
-    p_fecha_pedido: string | null;
-    p_fecha_limite_despacho: string | null;
-    p_etiqueta_url: string | null;
-    p_items: Array<{
+// Tarea: registro manual de pedidos (formulario "Ingresar pedido manual").
+//
+// 2026-08-25: antes esta funcion (como upsertPedido) llamaba al RPC
+// upsert_pedido. Ese RPC arranca con
+// `PERFORM public._check_internal_secret_bool()`, una funcion que exige un
+// header x-internal-secret con un valor que SOLO conocen los workflows de
+// n8n (llamadas servidor-a-servidor). El navegador del vendedor nunca puede
+// tener ese secreto -- ni deberia, exponerlo en el cliente seria un hueco de
+// seguridad -- asi que toda llamada desde este formulario fallaba con "No
+// autorizado", capturado como el generico "No se pudo registrar el pedido.
+// Intenta nuevamente.": el registro manual nunca pudo guardar un pedido
+// end-to-end.
+//
+// Se reemplaza por un INSERT directo, protegido por la policy RLS "vendedor
+// inserta pedidos" ya existente sobre public.pedidos (mismo mecanismo que ya
+// usan updateEstadoPedido/cancelarPedido para otras escrituras del vendedor
+// sobre esta tabla) -- la forma correcta de autorizar una escritura desde el
+// navegador de un usuario autenticado. Un INSERT simple alcanza (a
+// diferencia del RPC, pensado para el merge por ON CONFLICT de los webhooks
+// automaticos ML/FA que pueden recibir el mismo pedido varias veces) porque
+// el registro manual ya valida duplicados ANTES de llegar aca, en el paso
+// "Identificar" (existePedidoDuplicado).
+export async function crearPedidoManual(params: {
+    cliente_id: string;
+    plataforma: string;
+    id_plataforma: string;
+    order_id: string;
+    estado: string;
+    cliente_nombre: string | null;
+    total_pagado: number;
+    fecha_pedido: string | null;
+    fecha_limite_despacho: string | null;
+    etiqueta_url: string | null;
+    items: Array<{
       title: string;
       quantity: number;
       unit_price: number;
       sku: string | null;
     }>;
-}): Promise<UpsertPedidoResultado> {
-    const { data, error } = await supabase.rpc("upsert_pedido", params);
+}): Promise<CrearPedidoManualResultado> {
+    const itemsConOrderId = params.items.map((item) => ({ ...item, order_id: params.order_id }));
+    const montosPorOrden = params.total_pagado > 0 ? { [params.order_id]: params.total_pagado } : {};
+
+    const { data, error } = await supabase
+      .from("pedidos")
+      .insert({
+        cliente_id: params.cliente_id,
+        plataforma: params.plataforma,
+        id_plataforma: params.id_plataforma,
+        order_id: params.order_id,
+        estado: params.estado,
+        cliente_nombre: params.cliente_nombre,
+        total_pagado: params.total_pagado,
+        fecha_pedido: params.fecha_pedido ?? new Date().toISOString(),
+        fecha_limite_despacho: params.fecha_limite_despacho,
+        etiqueta_url: params.etiqueta_url,
+        items: itemsConOrderId,
+        montos_por_orden: montosPorOrden,
+        registro_manual: true,
+      })
+      .select("id")
+      .single();
     if (error) throw error;
-    return data as UpsertPedidoResultado;
+    return { pedido_id: data.id };
 }
 
 export function getEtiquetaUrl(storagePath: string): string {
