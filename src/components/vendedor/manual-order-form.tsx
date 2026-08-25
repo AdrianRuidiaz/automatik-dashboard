@@ -25,6 +25,15 @@ interface ApiResult {
   order_id: string;
 }
 
+// Los webhooks de n8n ("Order Lookup API", "Verificar y Obtener Etiqueta
+// PDF") esperan el string "FA" para Falabella, mientras que el resto del
+// sistema (columna pedidos.plataforma, este mismo componente) usa
+// "Falabella". Este mapeo existe solo para las llamadas a esos dos
+// webhooks -- todo lo demás sigue usando el valor de Plataforma tal cual.
+function platformParam(p: Plataforma): string {
+  return p === "ML" ? "ML" : "FA";
+}
+
 export function ManualOrderForm() {
   const { clienteId } = useRole();
   const [step, setStep] = useState<Step>("identify");
@@ -58,7 +67,7 @@ export function ManualOrderForm() {
       }
 
       const res = await fetch(
-        `/api/orders/lookup?order=${encodeURIComponent(orderNumber)}&platform=${plataforma}`
+        `/api/orders/lookup?order=${encodeURIComponent(orderNumber)}&platform=${platformParam(plataforma)}`
       );
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -100,7 +109,7 @@ export function ManualOrderForm() {
           etiquetaFile
         );
       } else {
-        const verificacion = await verificarPdfDisponible(orderNumber, plataforma);
+        const verificacion = await verificarPdfDisponible(orderNumber, platformParam(plataforma));
         if (!verificacion.existe) {
           setError(
             verificacion.mensaje ||
