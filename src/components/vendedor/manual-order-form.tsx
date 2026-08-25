@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Search, Check, ArrowLeft, Upload, Loader2, AlertTriangle, Edit } from "lucide-react";
 import { cn, formatCLP, formatFechaLarga } from "@/lib/utils";
 import {
-  upsertPedido,
+  crearPedidoManual,
   existePedidoDuplicado,
   verificarPdfDisponible,
   uploadArchivo,
@@ -83,9 +83,9 @@ export function ManualOrderForm() {
   // antes bloqueaba el registro sin motivo. Solo si NO adjuntó nada se
   // intenta traer la guía automáticamente desde la plataforma. En cualquier
   // caso, si no queda una guía disponible se aborta ANTES de tocar
-  // Supabase/Airtable: no queda ningún registro a medias y el vendedor puede
-  // reintentar sin duplicar nada (upsert_pedido es idempotente por
-  // id_plataforma).
+  // Supabase/Airtable: no queda ningún registro a medias y el vendedor ya
+  // fue bloqueado antes por duplicados (existePedidoDuplicado), así que
+  // puede reintentar sin riesgo de duplicar el pedido.
   const handleConfirm = async () => {
     if (!apiResult || !clienteId) return;
     setSaving(true);
@@ -111,18 +111,18 @@ export function ManualOrderForm() {
         etiquetaUrl = verificacion.url ?? null;
       }
 
-      const resultado = await upsertPedido({
-        p_cliente_id: clienteId,
-        p_plataforma: plataforma === "ML" ? "ML" : "Falabella",
-        p_id_plataforma: orderNumber,
-        p_order_id: apiResult.order_id,
-        p_estado: apiResult.estado,
-        p_cliente_nombre: apiResult.cliente_nombre,
-        p_total_pagado: apiResult.total_pagado,
-        p_fecha_pedido: apiResult.fecha_pedido,
-        p_fecha_limite_despacho: apiResult.fecha_limite_despacho,
-        p_etiqueta_url: etiquetaUrl,
-        p_items: apiResult.items,
+      const resultado = await crearPedidoManual({
+        cliente_id: clienteId,
+        plataforma: plataforma === "ML" ? "ML" : "Falabella",
+        id_plataforma: orderNumber,
+        order_id: apiResult.order_id,
+        estado: apiResult.estado,
+        cliente_nombre: apiResult.cliente_nombre,
+        total_pagado: apiResult.total_pagado,
+        fecha_pedido: apiResult.fecha_pedido,
+        fecha_limite_despacho: apiResult.fecha_limite_despacho,
+        etiqueta_url: etiquetaUrl,
+        items: apiResult.items,
       });
 
       if (etiquetaUrl) {
