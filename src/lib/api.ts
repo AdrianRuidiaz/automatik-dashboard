@@ -323,10 +323,11 @@ export function getEtiquetaUrl(storagePath: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Tarea: validacion de PDF/Dropbox antes de guardar (creacion manual).
-// Sigue el mismo patron que /api/orders/lookup: el frontend nunca habla
-// directo con Dropbox, todo pasa por un webhook de n8n que ya tiene las
-// credenciales configuradas.
+// Tarea: validacion de que exista la guia de despacho antes de guardar
+// (creacion manual). Sigue el mismo patron que /api/orders/lookup: el
+// frontend nunca habla directo con Mercado Libre/Falabella, todo pasa por un
+// webhook de n8n que ya tiene las credenciales configuradas. Este workflow
+// no usa Dropbox (descarga desde la API de ML/FA y sube a Supabase Storage).
 // ---------------------------------------------------------------------------
 export interface VerificarPdfResultado {
     existe: boolean;
@@ -345,7 +346,7 @@ export async function verificarPdfDisponible(
     if (!res.ok) {
           return {
                   existe: false,
-                  mensaje: body.error || "No se pudo verificar el PDF en Dropbox",
+                  mensaje: body.error || "No se pudo verificar la guía de despacho",
           };
     }
     return { existe: true, url: body.url, mensaje: body.mensaje };
