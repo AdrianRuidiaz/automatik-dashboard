@@ -74,32 +74,41 @@ export function ManualOrderForm() {
     }
   };
 
-  // Tarea: validar que exista la guía de despacho antes de guardar. Si el
-  // PDF no existe o falla la verificación, se aborta ANTES de tocar
-  // Supabase/Airtable: no queda ningún registro a medias y el vendedor
-  // puede reintentar sin duplicar nada (upsert_pedido es idempotente por
+  // Tarea: asegurar que quede una guía de despacho asociada antes de
+  // guardar. Si el vendedor ya adjuntó el PDF manualmente (paso
+  // "Identificar" -- por ejemplo porque el pedido ya fue despachado y la
+  // API de ML/Falabella ya no permite regenerar la guía), se usa ese
+  // archivo directamente y NO se llama a la verificación automática: pedirle
+  // a la API una guía que el vendedor ya tiene en la mano no tiene sentido y
+  // antes bloqueaba el registro sin motivo. Solo si NO adjuntó nada se
+  // intenta traer la guía automáticamente desde la plataforma. En cualquier
+  // caso, si no queda una guía disponible se aborta ANTES de tocar
+  // Supabase/Airtable: no queda ningún registro a medias y el vendedor puede
+  // reintentar sin duplicar nada (upsert_pedido es idempotente por
   // id_plataforma).
   const handleConfirm = async () => {
     if (!apiResult || !clienteId) return;
     setSaving(true);
     setError(null);
     try {
-      const verificacion = await verificarPdfDisponible(orderNumber, plataforma);
-      if (!verificacion.existe) {
-        setError(
-          verificacion.mensaje ||
-            "No se encontró la guía de despacho de este pedido. Genérala en la plataforma antes de registrar el pedido."
-        );
-        return;
-      }
+      let etiquetaUrl: string | null = null;
 
-      let etiquetaUrl: string | null = verificacion.url ?? null;
       if (etiquetaFile) {
         etiquetaUrl = await uploadArchivo(
           "etiquetas",
           `${orderNumber}/etiqueta_${Date.now()}.pdf`,
           etiquetaFile
         );
+      } else {
+        const verificacion = await verificarPdfDisponible(orderNumber, plataforma);
+        if (!verificacion.existe) {
+          setError(
+            verificacion.mensaje ||
+              "No se encontró la guía de despacho de este pedido. Adjúntala manualmente arriba o genérala en la plataforma antes de registrar el pedido."
+          );
+          return;
+        }
+        etiquetaUrl = verificacion.url ?? null;
       }
 
       const resultado = await upsertPedido({
@@ -259,7 +268,7 @@ export function ManualOrderForm() {
               onChange={(e) => setEtiquetaFile(e.target.files?.[0] ?? null)}
             />
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Si no adjuntas la etiqueta aquí, al confirmar se verificará que ya exista la guía de despacho en Mercado Libre/Falabella.
+              Si no adjuntas la etiqueta aquí, al confirmar se verificará automáticamente que ya exista la guía de despacho en Mercado Libre/Falabella. Si el pedido ya fue despachado y la plataforma ya no permite regenerarla, adjúntala tú mismo aquí.
             </p>
           </div>
 
