@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Tarea: validar que exista el PDF (guía de despacho / etiqueta) en Dropbox
-// ANTES de confirmar el registro de un pedido manual en Supabase + Airtable.
+// Verifica que exista el PDF (guía de despacho / etiqueta) ANTES de
+// confirmar el registro de un pedido manual en Supabase + Airtable.
 //
 // Sigue el mismo patrón que /api/orders/lookup: el frontend nunca habla
-// directo con Dropbox ni maneja sus credenciales. Todo pasa por un webhook
-// de n8n (mismo proyecto donde ya viven los workflows "FA - Red de
-// Seguridad", "ML Principal", etc.) que sí tiene la conexión OAuth de
-// Dropbox configurada.
+// directo con Mercado Libre/Falabella ni maneja sus credenciales. Todo pasa
+// por el webhook de n8n "Verificar y Obtener Etiqueta PDF (Pedido Manual)",
+// que descarga la guía directo desde la API de ML o Falabella y la sube a
+// Supabase Storage (bucket "etiquetas"). Este workflow NO usa Dropbox —
+// Dropbox en este proyecto es solo un relay temporal (90s) del flujo
+// automático ML/FA → Airtable, no un almacén persistente.
 //
-// Requiere crear en n8n un webhook que reciba { order_number, platform } y
-// responda 200 con { url } si encuentra el PDF, o un status distinto de 2xx
-// si no existe o no se pudo descargar. Ese webhook aún no existe — hay que
-// construirlo en n8n para que esta ruta funcione de punta a punta.
+// 2026-08-25: se deja de depender de process.env.N8N_WEBHOOK_VERIFY_PDF_URL
+// (mismo problema que tuvo N8N_WEBHOOK_LOOKUP_URL: fuente de fallos
+// silenciosos, sin forma fácil de auditar su valor real en Vercel) y se
+// hardcodea la URL verificada directamente contra el triggerInfo del
+// workflow en n8n.
+const N8N_VERIFY_PDF_URL =
+  "https://main-production-8d17.up.railway.app/webhook/verify-pdf-manual";
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const orderNumber = searchParams.get("order");
@@ -25,43 +31,40 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const n8nUrl = process.env.N8N_WEBHOOK_VERIFY_PDF_URL;
-  if (!n8nUrl) {
-    console.error("N8N_WEBHOOK_VERIFY_PDF_URL no configurado");
-    return NextResponse.json(
-      { error: "Verificación de PDF no configurada" },
-      { status: 500 }
-    );
-  }
-
   try {
-    const res = await fetch(n8nUrl, {
+    const res = await fetch(N8N_VERIFY_PDF_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Timeout defensivo: si Dropbox/n8n no responde, no queremos dejar
+      // Timeout defensivo: si n8n/ML/FA no responde, no queremos dejar
       // el formulario de creación de pedido colgado indefinidamente.
       signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({ order_number: orderNumber, platform }),
     });
 
-    if (!res.ok) {
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data) {
       console.error(
         `verify-pdf: n8n respondió ${res.status} para pedido ${orderNumber} (${platform})`
       );
       return NextResponse.json(
         {
-          error: `No se encontró el PDF en Dropbox para el pedido ${orderNumber}. Verifica que la guía de despacho ya esté generada e intenta nuevamente.`,
+          // Se reenvía el mensaje real de n8n (ya viene traducido y
+          // específico: "aún no disponible en ML", "pedido ya despachado",
+          // "no encontrado en Falabella", etc.) en vez de un texto fijo.
+          error:
+            (data && data.error) ||
+            `No se pudo obtener la guía de despacho para el pedido ${orderNumber}. Verifica que ya esté generada e intenta nuevamente.`,
         },
-        { status: 404 }
+        { status: res.ok ? 502 : res.status }
       );
     }
 
-    const data = await res.json();
     return NextResponse.json({ url: data.url ?? null, mensaje: data.mensaje });
   } catch (err) {
-    console.error("verify-pdf: error consultando webhook de Dropbox/n8n:", err);
+    console.error("verify-pdf: error consultando webhook de n8n:", err);
     return NextResponse.json(
-      { error: "Error verificando el PDF en Dropbox. Intenta nuevamente." },
+      { error: "Error verificando la guía de despacho. Intenta nuevamente." },
       { status: 500 }
     );
   }
