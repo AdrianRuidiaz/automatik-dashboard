@@ -58,6 +58,8 @@ export function EquipoManager() {
     }
   }, [clienteId]);
 
+  // Fetch de datos al montar/cuando cambia clienteId, mismo patron que app/page.tsx.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { cargar(); }, [cargar]);
 
   const handleInvitar = async (e: React.FormEvent) => {
