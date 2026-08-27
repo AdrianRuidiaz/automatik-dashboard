@@ -41,7 +41,28 @@ export function AppShell({ children }: Props) {
       </div>
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-8">
-        {!listo ? null : rol === null ? (
+        {!listo ? (
+          // Antes: null mientras se resolvia el rol -- el navegador no tenia
+          // nada que pintar como First Contentful Paint hasta que terminaba
+          // ese round-trip. Con el perfil cacheado (ver role-context.tsx)
+          // esta ventana casi siempre es instantanea, pero en la primera
+          // carga de la sesion (o sin cache) este esqueleto le da al
+          // navegador contenido real que pintar de inmediato, en vez de una
+          // pantalla en blanco.
+          <div className="animate-in-soft space-y-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="skeleton h-7 w-48" />
+              <div className="skeleton h-8 w-8 rounded-lg" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="skeleton h-20 w-full" />
+              <div className="skeleton h-20 w-full" />
+              <div className="skeleton h-20 w-full" />
+              <div className="skeleton h-20 w-full" />
+            </div>
+            <div className="skeleton h-64 w-full" />
+          </div>
+        ) : rol === null ? (
           <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
             <p className="max-w-sm text-sm text-muted-foreground">
               Tu cuenta no tiene un rol activo asignado en este panel. Pide a un administrador que te invite.
