@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { AppShell } from "@/components/layout/app-shell";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { KpiRangeFilter } from "@/components/dashboard/kpi-range-filter";
-import { TrendChart } from "@/components/dashboard/trend-chart";
-import { PackingCard } from "@/components/empacador/packing-card";
-import { PackingHistory } from "@/components/empacador/packing-history";
 import { SearchBar } from "@/components/empacador/search-bar";
-import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
-import { ManualOrderForm } from "@/components/vendedor/manual-order-form";
 import { fetchPedidos, fetchDashboardKpisRango, fetchTendenciaDiaria } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
@@ -20,6 +16,42 @@ import Link from "next/link";
 import { ArrowRight, FileText, RefreshCw, AlertTriangle, Clock, Package, Inbox, PackageCheck } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
+
+// Code-splitting por rol: HomePage renderiza UNA sola de las tres ramas de
+// abajo (admin / empacador / vendedor) segun useRole(), pero antes las
+// importaba las tres de forma estatica -- cualquier usuario, sin importar
+// su rol, descargaba en el bundle inicial recharts (TrendChart, solo
+// admin), el flujo de camara/upload de evidencia (PackingCard/
+// PackingHistory, solo empacador) y las tablas/formularios de ventas
+// (TaxDocsTable/ManualOrderForm, solo vendedor). Con next/dynamic cada uno
+// pasa a su propio chunk que solo se pide cuando el rol activo realmente
+// necesita renderizarlo. ssr:false porque son piezas interactivas
+// (graficos, camara, formularios) sin contenido critico para SEO/first
+// paint -- coherente con que toda esta pagina ya es "use client".
+const TrendChart = dynamic(
+  () => import("@/components/dashboard/trend-chart").then((m) => m.TrendChart),
+  { ssr: false, loading: () => <div className="skeleton h-[220px] w-full" /> }
+);
+
+const PackingCard = dynamic(
+  () => import("@/components/empacador/packing-card").then((m) => m.PackingCard),
+  { ssr: false, loading: () => <div className="skeleton h-40 w-full" /> }
+);
+
+const PackingHistory = dynamic(
+  () => import("@/components/empacador/packing-history").then((m) => m.PackingHistory),
+  { ssr: false, loading: () => <div className="skeleton h-40 w-full" /> }
+);
+
+const TaxDocsTable = dynamic(
+  () => import("@/components/vendedor/tax-docs-table").then((m) => m.TaxDocsTable),
+  { ssr: false, loading: () => <div className="skeleton h-64 w-full" /> }
+);
+
+const ManualOrderForm = dynamic(
+  () => import("@/components/vendedor/manual-order-form").then((m) => m.ManualOrderForm),
+  { ssr: false, loading: () => <div className="skeleton h-64 w-full" /> }
+);
 
 const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
@@ -86,7 +118,7 @@ export default function HomePage() {
   // /api/pedidos/[id]/empacar) -- pedidos.estado puede seguir cambiando
   // libremente por sync externo sin sacar nada de la cola antes de tiempo.
   const pendientes = useMemo(
-    () => pedidos.filter((p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado)),
+    () => pedidos.filter((p) => !p.empacado_en && !"cancelled", "returned", "not_paid".includes(p.estado)),
     [pedidos]
   );
 

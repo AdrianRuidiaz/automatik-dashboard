@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import { formatFechaCorta } from "@/lib/utils";
 import { ESTADO_LABELS } from "@/lib/types";
 import type { Pedido } from "@/lib/types";
@@ -44,7 +43,18 @@ export function exportarPedidosCSV(pedidos: Pedido[]) {
 // Mismo dato que el CSV pero como .xlsx real (SheetJS), con anchos de
 // columna, formato moneda en Total, autofiltro y encabezado congelado --
 // para que se sienta como una planilla de verdad y no un volcado plano.
-export function exportarPedidosXLSX(pedidos: Pedido[]) {
+//
+// xlsx (SheetJS) se carga con import() dinamico, recien cuando esta funcion
+// se ejecuta (click en "Exportar > Excel (.xlsx)"), en vez de un
+// `import * as XLSX from "xlsx"` estatico arriba del archivo. La libreria
+// es bastante pesada y la gran mayoria de las sesiones nunca hace click en
+// exportar a Excel -- antes su codigo viajaba igual dentro del bundle
+// inicial (arrastrado por orders-table.tsx, que se carga apenas se entra a
+// /pedidos) para todo el mundo. Con el import dinamico, Next separa xlsx en
+// su propio chunk que solo se descarga cuando alguien realmente exporta.
+export async function exportarPedidosXLSX(pedidos: Pedido[]) {
+  const XLSX = await import("xlsx");
+
   const filas = pedidos.map((p) => ({
     "N° pedido": p.id_plataforma,
     "Plataforma": p.plataforma,

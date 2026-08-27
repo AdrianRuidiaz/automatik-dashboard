@@ -4,8 +4,12 @@
 
 @layer base {
   :root {
-    --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-    --font-serif: "Instrument Serif", Georgia, serif;
+    /* --font-inter / --font-instrument-serif son las variables CSS que
+       genera next/font/google (ver src/app/layout.tsx) -- ya no son
+       strings de familia de fuente sueltas, sino la variable que Next
+       resuelve a los archivos self-hosteados. */
+    --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+    --font-serif: var(--font-instrument-serif), Georgia, serif;
 
     /* ── Dark Luxury Palette ── */
     --background: 230 15% 7%;

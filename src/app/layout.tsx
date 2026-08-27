@@ -1,8 +1,33 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Instrument_Serif } from "next/font/google";
 import { RoleProvider } from "@/lib/role-context";
 import { PwaRegister } from "@/components/pwa-register";
 import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
 import "./globals.css";
+
+// next/font/google descarga y self-hostea las fuentes en build time (en vez
+// de pedirlas a fonts.googleapis.com en cada visita): elimina la solicitud
+// externa render-blocking que antes hacian los <link rel="stylesheet"> en
+// <head> (mas los dos <link rel="preconnect">) y evita el parpadeo de
+// fuente (FOUT/FOIT), porque Next inyecta el @font-face con los archivos ya
+// servidos desde el mismo origen. Los nombres de variable
+// (--font-inter / --font-instrument-serif) se consumen desde --font-sans y
+// --font-serif en globals.css, asi que el resto del codigo (Tailwind
+// fontFamily.sans/serif, la clase .display, etc.) no cambia.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "automatik.io — Gestión de pedidos",
@@ -29,11 +54,8 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${inter.variable} ${instrumentSerif.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300..700&display=swap" rel="stylesheet" />
         {/* Aplica la clase .light (si el usuario la eligio en Configuracion
             > Apariencia) antes del primer paint -- ver src/lib/theme.ts */}
         <script dangerouslySetInnerHTML={{ __html: TEMA_INLINE_SCRIPT }} />
