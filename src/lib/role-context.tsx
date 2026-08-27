@@ -111,6 +111,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     try {
       const guardado = window.localStorage.getItem(VISTA_KEY);
       if (guardado === "admin" || guardado === "vendedor" || guardado === "empacador") {
+        // localStorage no existe durante el SSR; se corrige aca (post-mount)
+        // a proposito para no romper la hidratacion con un valor distinto
+        // al que renderizo el servidor.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setVistaState(guardado);
       }
     } catch {}
@@ -118,6 +122,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (esPublica) {
+      // Gatea la UI de /login y /auth/* segun la ruta; se deja como efecto
+      // para no reestructurar el flujo de auth (mas abajo en este mismo
+      // efecto) solo por este caso.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setListo(true);
       return;
     }
