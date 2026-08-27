@@ -64,7 +64,11 @@ export async function PATCH(req: NextRequest) {
   if ("error" in check) return check.error;
   const { supabaseAdmin, caller } = check;
 
-  const objetivoCheck = await resolverObjetivo(supabaseAdmin, caller as any, usuario_id);
+  const objetivoCheck = await resolverObjetivo(
+    supabaseAdmin,
+    caller as { rol: string; cliente_id: string; auth_user_id: string },
+    usuario_id
+  );
   if ("error" in objetivoCheck) return objetivoCheck.error;
 
   const { error: updateError } = await supabaseAdmin
@@ -89,7 +93,11 @@ export async function DELETE(req: NextRequest) {
   if ("error" in check) return check.error;
   const { supabaseAdmin, caller } = check;
 
-  const objetivoCheck = await resolverObjetivo(supabaseAdmin, caller as any, usuario_id);
+  const objetivoCheck = await resolverObjetivo(
+    supabaseAdmin,
+    caller as { rol: string; cliente_id: string; auth_user_id: string },
+    usuario_id
+  );
   if ("error" in objetivoCheck) return objetivoCheck.error;
 
   // Se borra la fila de verdad (no baja logica). archivos.subido_por
