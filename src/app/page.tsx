@@ -85,6 +85,10 @@ export default function HomePage() {
     finally { setRefreshing(false); }
   }, [clienteId, rangoKpi]);
 
+  // Fetch de datos al montar/cuando cambia clienteId o rangoKpi; no hay una
+  // alternativa mas simple sin sumar una libreria de data-fetching
+  // (SWR/React Query), fuera de alcance de este cambio.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   // NOTA: la suscripcion tiene que filtrar por cliente_id. Sin el filtro,
@@ -129,17 +133,28 @@ export default function HomePage() {
     [pedidos]
   );
 
+  // "ahora" se deriva de lastUpdate (el momento en que se cargaron los
+  // pedidos por ultima vez) en vez de llamar Date.now() durante el render:
+  // Date.now() es una funcion impura y el linter de React Compiler la
+  // rechaza dentro de useMemo (react-hooks/purity). Como estos memos ya
+  // dependen de datos que solo cambian cuando loadData() corre -- y
+  // lastUpdate se actualiza en ese mismo momento -- usar ese timestamp es
+  // ademas mas coherente (la urgencia se calcula respecto al momento real
+  // en que se trajeron los datos) y produce exactamente el mismo resultado
+  // que antes: los memos solo se recalculaban cuando pedidos/pendientes
+  // cambiaba, nunca en cada render.
+  const ahora = lastUpdate?.getTime() ?? 0;
+
   const pendientesOrdenados = useMemo(() => {
     return [...pendientes].sort((a, b) => {
-      const now = Date.now();
-      const ha = a.fecha_limite_despacho ? (new Date(a.fecha_limite_despacho ?? "").getTime() - now) / 36e5 : Infinity;
-      const hb = b.fecha_limite_despacho ? (new Date(b.fecha_limite_despacho ?? "").getTime() - now) / 36e5 : Infinity;
+      const ha = a.fecha_limite_despacho ? (new Date(a.fecha_limite_despacho ?? "").getTime() - ahora) / 36e5 : Infinity;
+      const hb = b.fecha_limite_despacho ? (new Date(b.fecha_limite_despacho ?? "").getTime() - ahora) / 36e5 : Infinity;
       if (ha !== Infinity && hb !== Infinity) return ha - hb;
       if (ha !== Infinity) return -1;
       if (hb !== Infinity) return 1;
       return 0;
     });
-  }, [pendientes]);
+  }, [pendientes, ahora]);
 
   const pendientesFiltrados = useMemo(() => {
     if (!busqueda.trim()) return pendientesOrdenados;
@@ -155,16 +170,16 @@ export default function HomePage() {
   const urgentes = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return false;
-      return (new Date(p.fecha_limite_despacho ?? "").getTime() - Date.now()) / 36e5 < 24;
+      return (new Date(p.fecha_limite_despacho ?? "").getTime() - ahora) / 36e5 < 24;
     }),
-    [pendientesFiltrados]
+    [pendientesFiltrados, ahora]
   );
   const normales = useMemo(
     () => pendientesFiltrados.filter((p) => {
       if (!p.fecha_limite_despacho) return true;
-      return (new Date(p.fecha_limite_despacho ?? "").getTime() - Date.now()) / 36e5 >= 24;
+      return (new Date(p.fecha_limite_despacho ?? "").getTime() - ahora) / 36e5 >= 24;
     }),
-    [pendientesFiltrados]
+    [pendientesFiltrados, ahora]
   );
 
   const ultimos = pedidos.slice(0, 5);
