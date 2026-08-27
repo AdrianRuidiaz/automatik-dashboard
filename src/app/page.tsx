@@ -118,7 +118,7 @@ export default function HomePage() {
   // /api/pedidos/[id]/empacar) -- pedidos.estado puede seguir cambiando
   // libremente por sync externo sin sacar nada de la cola antes de tiempo.
   const pendientes = useMemo(
-    () => pedidos.filter((p) => !p.empacado_en && !"cancelled", "returned", "not_paid".includes(p.estado)),
+    () => pedidos.filter((p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado)),
     [pedidos]
   );
 
