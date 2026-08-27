@@ -109,7 +109,7 @@ export default function PedidosPage() {
   // /api/pedidos/[id]/empacar) es la unica fuente de verdad de si ya se
   // empaco en Automatik.
   const pendientes = pedidos.filter(
-    (p) => !p.empacado_en && !"cancelled", "returned", "not_paid".includes(p.estado)
+    (p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado)
   );
 
   return (
