@@ -1,16 +1,43 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { AppShell } from "@/components/layout/app-shell";
-import { OrdersTable } from "@/components/pedidos/orders-table";
-import { PackingCard } from "@/components/empacador/packing-card";
-import { PackingHistory } from "@/components/empacador/packing-history";
-import { TaxDocsTable } from "@/components/vendedor/tax-docs-table";
 import { fetchPedidos } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
 import { cn } from "@/lib/utils";
 import type { Pedido, RolUsuario } from "@/lib/types";
+
+// Code-splitting por rol, igual criterio que src/app/page.tsx: esta pagina
+// renderiza UNA sola de las tres ramas (admin / empacador / vendedor) segun
+// useRole(), pero antes importaba las cuatro piezas pesadas de forma
+// estatica -- todo usuario descargaba OrdersTable (react-table + el propio
+// export a CSV/XLSX, solo admin), PackingCard/PackingHistory (camara/upload
+// de evidencia, solo empacador) y TaxDocsTable (solo vendedor) sin importar
+// su rol real. Con next/dynamic cada uno pasa a su propio chunk que solo se
+// pide cuando el rol activo lo necesita. ssr:false porque son piezas
+// interactivas sin contenido critico para SEO/first paint, coherente con
+// que toda la pagina ya es "use client".
+const OrdersTable = dynamic(
+  () => import("@/components/pedidos/orders-table").then((m) => m.OrdersTable),
+  { ssr: false, loading: () => <div className="skeleton h-96 w-full" /> }
+);
+
+const PackingCard = dynamic(
+  () => import("@/components/empacador/packing-card").then((m) => m.PackingCard),
+  { ssr: false, loading: () => <div className="skeleton h-40 w-full" /> }
+);
+
+const PackingHistory = dynamic(
+  () => import("@/components/empacador/packing-history").then((m) => m.PackingHistory),
+  { ssr: false, loading: () => <div className="skeleton h-40 w-full" /> }
+);
+
+const TaxDocsTable = dynamic(
+  () => import("@/components/vendedor/tax-docs-table").then((m) => m.TaxDocsTable),
+  { ssr: false, loading: () => <div className="skeleton h-64 w-full" /> }
+);
 
 export default function PedidosPage() {
   const { clienteId } = useRole();

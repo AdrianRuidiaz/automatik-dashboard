@@ -289,7 +289,15 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = 
                 CSV
               </button>
               <button
-                onClick={() => { exportarPedidosXLSX(filtered); setExportOpen(false); }}
+                onClick={() => {
+                  // exportarPedidosXLSX carga la libreria xlsx con import()
+                  // dinamico recien al hacer click aca (ver
+                  // lib/export-pedidos.ts) -- es async, asi que se atrapa
+                  // cualquier error de la carga/generacion en vez de dejar
+                  // una promesa rechazada sin manejar.
+                  void exportarPedidosXLSX(filtered).catch((err) => console.error("Error exportando XLSX:", err));
+                  setExportOpen(false);
+                }}
                 className="block w-full px-3 py-2 text-left text-xs hover:bg-secondary"
               >
                 Excel (.xlsx)
