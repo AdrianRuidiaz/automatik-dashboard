@@ -23,6 +23,45 @@ interface ClienteOption {
 const VISTA_KEY = "automatik:vista_super_admin";
 const CLIENTE_KEY = "automatik:cliente_activo_super_admin";
 
+// Cache del perfil (rol + cliente_id) en localStorage, para no repetir el
+// round-trip a usuarios_roles en cada carga de pagina. Solo se usa como
+// pintado optimista mientras se confirma en segundo plano -- cargarPerfil()
+// sigue corriendo siempre y sobreescribe el estado si algo cambio (rol
+// editado por un admin, usuario desactivado, etc.), asi que un dato
+// cacheado desactualizado nunca queda "pegado" mas de lo que tarda esa
+// consulta.
+const PERFIL_CACHE_KEY = "automatik:perfil_cache";
+
+interface PerfilCache {
+  userId: string;
+  rolReal: string;
+  usuario: Usuario;
+  clientePropioId: string | null;
+}
+
+function leerPerfilCache(userId: string): PerfilCache | null {
+  try {
+    const raw = window.localStorage.getItem(PERFIL_CACHE_KEY);
+    if (!raw) return null;
+    const cache = JSON.parse(raw) as PerfilCache;
+    return cache?.userId === userId ? cache : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarPerfilCache(userId: string, datos: Omit<PerfilCache, "userId">) {
+  try {
+    window.localStorage.setItem(PERFIL_CACHE_KEY, JSON.stringify({ userId, ...datos }));
+  } catch {}
+}
+
+function limpiarPerfilCache() {
+  try {
+    window.localStorage.removeItem(PERFIL_CACHE_KEY);
+  } catch {}
+}
+
 interface RoleContextValue {
   /** Rol efectivo para decidir que UI mostrar. Para super_admin, es la vista elegida (setVista). */
   rol: RolUsuario | null;
@@ -100,18 +139,26 @@ export function RoleProvider({ children }: { children: ReactNode }) {
         setRolReal(null);
         setUsuario(null);
         setClientePropioId(null);
+        limpiarPerfilCache();
         setListo(true);
         return;
       }
 
-      setRolReal(data.rol as string);
-      setUsuario({
+      const usuarioResuelto: Usuario = {
         id: userId,
         rolId: data.id as string,
         nombre: data.nombre || email,
         email: data.email || email,
+      };
+      const clienteResuelto = data.cliente_id as string;
+      setRolReal(data.rol as string);
+      setUsuario(usuarioResuelto);
+      setClientePropioId(clienteResuelto);
+      guardarPerfilCache(userId, {
+        rolReal: data.rol as string,
+        usuario: usuarioResuelto,
+        clientePropioId: clienteResuelto,
       });
-      setClientePropioId(data.cliente_id as string);
 
       // Solo el super_admin necesita conocer el resto de clientes (modo
       // soporte "vista desarrollador"). El resto de roles nunca deben poder
@@ -144,12 +191,25 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         if (session.user.id === ultimoUserId) return;
         ultimoUserId = session.user.id;
+        // Perfil cacheado (ver guardarPerfilCache mas arriba): si es el
+        // mismo usuario de la ultima visita, se pinta de inmediato sin
+        // esperar el round-trip a usuarios_roles -- cargarPerfil() se sigue
+        // ejecutando igual, en paralelo, y corrige el estado si algo
+        // cambio desde la ultima vez.
+        const cache = leerPerfilCache(session.user.id);
+        if (cache) {
+          setRolReal(cache.rolReal);
+          setUsuario(cache.usuario);
+          setClientePropioId(cache.clientePropioId);
+          setListo(true);
+        }
         cargarPerfil(session.user.id, session.user.email || "");
       } else {
         ultimoUserId = null;
         setRolReal(null);
         setUsuario(null);
         setClientePropioId(null);
+        limpiarPerfilCache();
         setListo(true);
       }
     });
@@ -191,6 +251,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     setRolReal(null);
     setUsuario(null);
     setClientePropioId(null);
+    limpiarPerfilCache();
     router.push("/login");
     router.refresh();
   };
