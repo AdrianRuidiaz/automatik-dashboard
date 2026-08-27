@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RoleProvider } from "@/lib/role-context";
 import { PwaRegister } from "@/components/pwa-register";
 import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
@@ -63,6 +64,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <PwaRegister />
         <RoleProvider>{children}</RoleProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
