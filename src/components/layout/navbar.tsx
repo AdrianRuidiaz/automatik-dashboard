@@ -132,6 +132,20 @@ export function Navbar() {
   const ref = useRef<HTMLDivElement>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Cierra el panel mobile al navegar, para no dejarlo abierto tapando la
+  // pagina de destino. Patron "ajustar estado durante el render" (ver
+  // https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // en vez de useEffect: React permite llamar setState asi, durante el
+  // render, cuando se compara contra un valor guardado del render anterior
+  // -- re-renderiza antes de pintar en pantalla, asi que no hay flash visible
+  // del panel todavia abierto (que si se veia con el efecto: el cierre
+  // tardaba un tick extra despues de navegar).
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setMobileOpen(false);
+  }
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -139,10 +153,6 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
-
-  // Cierra el panel mobile al navegar, para no dejarlo abierto tapando la
-  // pagina de destino.
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
   if (!rol) {
     return (
