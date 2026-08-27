@@ -19,6 +19,10 @@ export function SeccionNotificaciones() {
   const [mensaje, setMensaje] = useState<string | null>(null);
 
   useEffect(() => {
+    // pushSoportado() consulta APIs del navegador (Notification/ServiceWorker)
+    // que no existen en SSR; va en el mismo efecto que ya suscribe la
+    // comprobacion async de abajo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCapaz(pushSoportado());
     obtenerSuscripcionActual()
       .then(async (sub) => {

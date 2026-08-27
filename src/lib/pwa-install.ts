@@ -35,6 +35,9 @@ export function useInstallPrompt() {
     const yaInstalada =
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+    // matchMedia/navigator solo existen en el cliente; va en el mismo efecto
+    // que ya suscribe los listeners de beforeinstallprompt/appinstalled de abajo.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInstalada(yaInstalada);
 
     // iPadOS 13+ reporta su user agent como Mac, por eso el chequeo extra

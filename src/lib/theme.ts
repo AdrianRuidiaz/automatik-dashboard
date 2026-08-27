@@ -43,6 +43,11 @@ export function useTema() {
   const [tema, setTemaState] = useState<Tema>("dark");
 
   useEffect(() => {
+    // Correccion post-mount intencional (ver comentario arriba): el estado
+    // inicial debe ser "dark" en el primer render para coincidir con el HTML
+    // del server, y recien aca se ajusta al valor real que el script inline
+    // ya aplico.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTemaState(document.documentElement.classList.contains("light") ? "light" : "dark");
   }, []);
 

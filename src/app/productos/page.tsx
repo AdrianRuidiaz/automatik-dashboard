@@ -31,7 +31,9 @@ export default function ProductosPage() {
     }
   }, [clienteId]);
 
+  // Fetch de datos al montar/cuando cambia clienteId, mismo patron que app/page.tsx.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData();
   }, [loadData]);
 

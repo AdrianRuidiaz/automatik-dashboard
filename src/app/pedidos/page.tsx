@@ -65,12 +65,16 @@ export default function PedidosPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const filtro = params.get("filtro");
+    // Se lee via window.location en un efecto (no en el render) para no
+    // romper la hidratacion, mismo patron documentado arriba.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (filtro === "por_despachar") setFiltroInicial("por_despachar");
     else if (filtro === "cancelled") setFiltroInicial("cancelled");
 
     const ids = params.get("ids");
     if (ids) {
       const lista = ids.split(",").map((id) => id.trim()).filter(Boolean);
+      // idem arriba
       if (lista.length > 0) setIdsFiltro(lista);
     }
   }, []);
@@ -80,6 +84,8 @@ export default function PedidosPage() {
     try { setPedidos(await fetchPedidos(clienteId)); } catch (err) { console.error(err); }
   }, [clienteId]);
 
+  // Fetch de datos al montar/cuando cambia clienteId, mismo patron que app/page.tsx.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadData(); }, [loadData]);
 
   // NOTA: filtrar por cliente_id es obligatorio aca -- sin el filtro,

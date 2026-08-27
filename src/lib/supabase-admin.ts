@@ -16,8 +16,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 // como `never` (rompía el build de Vercel: "Argument ... is not assignable
 // to parameter of type 'never'"). Se tipa explícitamente con `any` en los
 // tres generics para que el resto del código pueda usar .from(tabla) libremente.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ver nota arriba
 let cachedClient: SupabaseClient<any, any, any> | null = null;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ver nota arriba
 export function getSupabaseAdmin(): SupabaseClient<any, any, any> {
   if (cachedClient) return cachedClient;
 
@@ -30,6 +32,7 @@ export function getSupabaseAdmin(): SupabaseClient<any, any, any> {
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ver nota arriba
   cachedClient = createClient<any, any, any>(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });

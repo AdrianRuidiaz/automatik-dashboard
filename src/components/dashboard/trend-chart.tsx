@@ -15,12 +15,24 @@ interface TrendChartProps {
   data: TendenciaDiaria[];
 }
 
-function CustomTooltip({ active, payload, label }: any) {
+interface TooltipEntry {
+  name: string;
+  value: number;
+  color: string;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-lg">
       <p className="mb-1.5 text-xs font-medium text-foreground">{label}</p>
-      {payload.map((entry: any) => (
+      {payload.map((entry) => (
         <div key={entry.name} className="flex items-center gap-2 text-xs">
           <span
             className="h-2 w-2 rounded-full"

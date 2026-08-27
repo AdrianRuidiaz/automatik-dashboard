@@ -11,4 +11,5 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // El generic <any, any, any> evita el mismo bug de inferencia "never" en
 // .select()/.eq()/.update() que rompio el build de Vercel cuando el cliente
 // admin no tenia un tipo Database explicito (ver supabase-admin.ts).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- ver nota arriba
 export const supabase = createBrowserClient<any, any, any>(supabaseUrl, supabaseAnonKey);

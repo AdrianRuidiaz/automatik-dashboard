@@ -40,6 +40,8 @@ export function SeccionSeguridad() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    // Fetch de datos al montar, mismo patron que app/page.tsx.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarSesiones();
   }, []);
 

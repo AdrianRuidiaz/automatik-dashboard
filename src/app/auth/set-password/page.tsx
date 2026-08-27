@@ -26,6 +26,10 @@ export default function SetPasswordPage() {
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const errorDesc = params.get("error_description") || hashParams.get("error_description");
     if (errorDesc) {
+      // window.location solo existe en el cliente; el resto del efecto ya es
+      // legitimamente un efecto (suscripcion a onAuthStateChange + timeout de
+      // abajo), asi que no vale la pena fragmentarlo solo por esta rama.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLinkError(decodeURIComponent(errorDesc.replace(/\+/g, " ")));
       return;
     }
