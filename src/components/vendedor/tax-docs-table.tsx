@@ -322,43 +322,50 @@ export function TaxDocsTable({ pedidos }: TaxDocsTableProps) {
               {abierto && (
                 <>
                   <DetalleVendedor pedido={p} docs={docsPedido} />
-                  {tab === "activos" && (
-                    <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
-                      {docsPedido.map((d) => (
-                        <a key={d.id} href={d.url}
-                          target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40">
-                          <Eye className="h-3.5 w-3.5" /> Ver {DOC_LABELS[d.tipo as TipoDocumentoTributario]?.label.toLowerCase()}
-                        </a>
-                      ))}
+                  {/* Fix: los documentos tributarios (boleta/factura/nota de
+                      credito) tambien se emiten para pedidos cancelados --
+                      de hecho la nota de credito existe precisamente PORQUE
+                      el pedido se cancelo. Antes este bloque completo
+                      (incluyendo "Ver documento" y el selector para subir
+                      uno nuevo) solo se mostraba con tab === "activos",
+                      dejando imposible adjuntar documentos a un pedido
+                      cancelado desde la UI. Se quita ese gate: el bloque
+                      ahora se muestra en ambas pestañas. */}
+                  <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3">
+                    {docsPedido.map((d) => (
+                      <a key={d.id} href={d.url}
+                        target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-input px-3 py-2 text-xs font-medium transition-colors hover:border-primary/40">
+                        <Eye className="h-3.5 w-3.5" /> Ver {DOC_LABELS[d.tipo as TipoDocumentoTributario]?.label.toLowerCase()}
+                      </a>
+                    ))}
 
-                      {tiposFaltantes.length > 0 && (
-                        activo === p.id ? (
-                          <>
-                            <select value={tipoSel} onChange={(e) => setTipoSel(e.target.value as TipoDocumentoTributario)}
-                              className="rounded-lg border border-input bg-card px-2.5 py-2 text-xs">
-                              {tiposFaltantes.map((t) => (
-                                <option key={t} value={t}>{DOC_LABELS[t].label}</option>
-                              ))}
-                            </select>
-                            <button onClick={() => { pendienteRef.current = p; fileRef.current?.click(); }}
-                              disabled={uploading === p.id}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60">
-                              {uploading === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                              Elegir archivo
-                            </button>
-                            <button onClick={() => setActivo(null)} className="px-2 text-xs text-muted-foreground">Cancelar</button>
-                          </>
-                        ) : (
-                          <button onClick={() => { setActivo(p.id); setTipoSel(tiposFaltantes[0]); }}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
-                            <Upload className="h-3.5 w-3.5" />
-                            {docsPedido.length > 0 ? "Agregar documento (ej. nota de credito)" : "Subir documento tributario"}
+                    {tiposFaltantes.length > 0 && (
+                      activo === p.id ? (
+                        <>
+                          <select value={tipoSel} onChange={(e) => setTipoSel(e.target.value as TipoDocumentoTributario)}
+                            className="rounded-lg border border-input bg-card px-2.5 py-2 text-xs">
+                            {tiposFaltantes.map((t) => (
+                              <option key={t} value={t}>{DOC_LABELS[t].label}</option>
+                            ))}
+                          </select>
+                          <button onClick={() => { pendienteRef.current = p; fileRef.current?.click(); }}
+                            disabled={uploading === p.id}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground disabled:opacity-60">
+                            {uploading === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            Elegir archivo
                           </button>
-                        )
-                      )}
-                    </div>
-                  )}
+                          <button onClick={() => setActivo(null)} className="px-2 text-xs text-muted-foreground">Cancelar</button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setActivo(p.id); setTipoSel(tiposFaltantes[0]); }}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
+                          <Upload className="h-3.5 w-3.5" />
+                          {docsPedido.length > 0 ? "Agregar documento (ej. nota de credito)" : "Subir documento tributario"}
+                        </button>
+                      )
+                    )}
+                  </div>
                 </>
               )}
             </div>
