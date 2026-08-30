@@ -243,15 +243,10 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
                 <KpiCards data={resumen} previousData={resumenAnterior} />
               </div>
 
-              <section>
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="display text-lg sm:text-xl">Pedidos por enviar</h2>
-                  <Link href="/pedidos" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-                    Ver todos <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </div>
-                <PedidosPorEnviar pedidos={pendientesOrdenados} ahora={ahora} />
-              </section>
+              {/* Tarea: "Pedidos por enviar" se saco del home de admin a
+                  pedido del usuario -- se mantiene solo en la pestaña
+                  "Por enviar" de vendedor (ver mas abajo), unica superficie
+                  actual del componente PedidosPorEnviar. */}
 
               <section>
                 <h2 className="display mb-3 text-lg sm:text-xl">Tendencia diaria</h2>
