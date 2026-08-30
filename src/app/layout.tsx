@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RoleProvider } from "@/lib/role-context";
 import { PwaRegister } from "@/components/pwa-register";
 import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
+import { getPerfilServidor } from "@/lib/auth-server";
 import "./globals.css";
 
 // next/font/google descarga y self-hostea las fuentes en build time (en vez
@@ -53,7 +54,15 @@ export const viewport: Viewport = {
   themeColor: "#0f1015",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Tarea (Speed Insights): RootLayout pasa a ser un Server Component async
+// (antes no tenia ninguna dependencia de datos) para poder adelantar la
+// resolucion de rol/cliente_id -- ver lib/auth-server.ts para el detalle
+// completo de por que y las garantias de que esto nunca puede romper una
+// pagina (siempre cae a null ante cualquier error, y RoleProvider ya sabe
+// arrancar sin initialProfile exactamente como antes de este cambio).
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const perfilInicial = await getPerfilServidor();
+
   return (
     <html lang="es" className={`${inter.variable} ${instrumentSerif.variable}`}>
       <head>
@@ -63,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <PwaRegister />
-        <RoleProvider>{children}</RoleProvider>
+        <RoleProvider initialProfile={perfilInicial}>{children}</RoleProvider>
         <SpeedInsights />
       </body>
     </html>
