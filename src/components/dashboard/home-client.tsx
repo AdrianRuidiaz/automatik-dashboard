@@ -13,9 +13,10 @@ import { RANGO_KPI_DEFAULT, calcularRangoFechas, type RangoKpi } from "@/lib/dat
 import type { Pedido, DashboardResumen, TendenciaDiaria, RolUsuario } from "@/lib/types";
 import { formatCLP, formatFechaCorta, cn } from "@/lib/utils";
 import Link from "next/link";
-import { ArrowRight, FileText, RefreshCw, AlertTriangle, Clock, Package, Inbox, PackageCheck } from "lucide-react";
+import { ArrowRight, FileText, RefreshCw, AlertTriangle, Clock, Package, Inbox, PackageCheck, Truck } from "lucide-react";
 import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
+import { PedidosPorEnviar } from "@/components/dashboard/pedidos-por-enviar";
 
 // Code-splitting por rol: HomePage renderiza UNA sola de las tres ramas de
 // abajo (admin / empacador / vendedor) segun useRole(), pero antes las
@@ -88,7 +89,7 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
   // app/page.tsx), asi que sigue siendo valido mientras rangoKpi no cambie.
   const [rangoKpi, setRangoKpi] = useState<RangoKpi>(RANGO_KPI_DEFAULT);
   const [tendencia, setTendencia] = useState<TendenciaDiaria[]>(initialData?.tendencia ?? []);
-  const [vendedorTab, setVendedorTab] = useState<"docs" | "manual">("docs");
+  const [vendedorTab, setVendedorTab] = useState<"docs" | "manual" | "porEnviar">("docs");
   const [empacadorTab, setEmpacadorTab] = useState<"pendientes" | "historial">("pendientes");
   const [lastUpdate, setLastUpdate] = useState<Date | null>(initialData ? new Date() : null);
   const [refreshing, setRefreshing] = useState(false);
@@ -241,6 +242,16 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
                 </div>
                 <KpiCards data={resumen} previousData={resumenAnterior} />
               </div>
+
+              <section>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="display text-lg sm:text-xl">Pedidos por enviar</h2>
+                  <Link href="/pedidos" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+                    Ver todos <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                <PedidosPorEnviar pedidos={pendientesOrdenados} ahora={ahora} />
+              </section>
 
               <section>
                 <h2 className="display mb-3 text-lg sm:text-xl">Tendencia diaria</h2>
@@ -445,8 +456,15 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
                     vendedorTab === "manual" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground")}>
                   Pedido manual
                 </button>
+                <button onClick={() => setVendedorTab("porEnviar")}
+                  className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all sm:flex-none sm:px-4 sm:text-sm",
+                    vendedorTab === "porEnviar" ? "bg-card shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                  <Truck className="h-3.5 w-3.5" /> Por enviar
+                </button>
               </div>
-              {vendedorTab === "docs" ? <TaxDocsTable pedidos={pedidos} /> : <ManualOrderForm />}
+              {vendedorTab === "docs" && <TaxDocsTable pedidos={pedidos} />}
+              {vendedorTab === "manual" && <ManualOrderForm />}
+              {vendedorTab === "porEnviar" && <PedidosPorEnviar pedidos={pendientesOrdenados} ahora={ahora} />}
             </div>
           )}
         </>
