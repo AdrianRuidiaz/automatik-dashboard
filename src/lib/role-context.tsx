@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { RolUsuario } from "@/lib/types";
+import type { PerfilServidor } from "@/lib/auth-server";
 
 interface Usuario {
   id: string;
@@ -87,13 +88,28 @@ interface RoleContextValue {
 
 const RoleContext = createContext<RoleContextValue | null>(null);
 
-export function RoleProvider({ children }: { children: ReactNode }) {
+interface RoleProviderProps {
+  children: ReactNode;
+  /**
+   * Perfil (rol + cliente_id) ya resuelto en el servidor (ver
+   * lib/auth-server.ts, sembrado desde RootLayout). Mismo rol que ya cumplia
+   * el cache de localStorage de mas abajo -- pintado OPTIMISTA mientras
+   * cargarPerfil() confirma en segundo plano y corrige si algo cambio. La
+   * diferencia es que este valor esta disponible desde el HTML que manda el
+   * servidor (antes de que corra cualquier JS del cliente), asi que evita
+   * por completo la pantalla en blanco / skeleton de AppShell en la carga
+   * inicial, no solo en visitas repetidas al mismo dispositivo.
+   */
+  initialProfile?: PerfilServidor | null;
+}
+
+export function RoleProvider({ children, initialProfile }: RoleProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [rolReal, setRolReal] = useState<string | null>(null);
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [clientePropioId, setClientePropioId] = useState<string | null>(null);
-  const [listo, setListo] = useState(false);
+  const [rolReal, setRolReal] = useState<string | null>(initialProfile?.rolReal ?? null);
+  const [usuario, setUsuario] = useState<Usuario | null>(initialProfile?.usuario ?? null);
+  const [clientePropioId, setClientePropioId] = useState<string | null>(initialProfile?.clientePropioId ?? null);
+  const [listo, setListo] = useState(!!initialProfile);
   const [vista, setVistaState] = useState<RolUsuario>("admin");
 
   // Modo soporte (solo super_admin): a que cliente se esta viendo/ayudando.

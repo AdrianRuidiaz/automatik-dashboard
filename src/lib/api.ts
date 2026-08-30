@@ -18,7 +18,11 @@ import type {
 
 // cancelado_por_usuario: embebido via el FK pedidos_cancelado_por_fkey, para
 // poder mostrar "Cancelado por X" sin una consulta aparte por pedido.
-const PEDIDO_SELECT = "*, cancelado_por_usuario:usuarios_roles!pedidos_cancelado_por_fkey(nombre)";
+// Exportado (en vez de quedar privado del archivo) para que lib/api-server.ts
+// pueda reusar exactamente el mismo shape de consulta desde el cliente de
+// servidor -- una sola fuente de verdad, sin duplicar el string a mano y
+// arriesgar que las dos versiones (browser/server) se desincronicen.
+export const PEDIDO_SELECT = "*, cancelado_por_usuario:usuarios_roles!pedidos_cancelado_por_fkey(nombre)";
 
 // Limite de seguridad, no paginacion real todavia. fetchPedidos la usan tanto
 // la tabla de admin (historial completo) como la cola de "pendientes de
