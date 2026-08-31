@@ -20,8 +20,7 @@
 // blanco con su propio HTML minimo es mucho mas simple y no puede arrastrar
 // sin querer nada de la UI normal a la version impresa.
 
-import { formatCLP } from "@/lib/utils";
-import { ESTADO_LABELS, type Pedido } from "@/lib/types";
+import type { Pedido } from "@/lib/types";
 
 // "Hoy" se define como el dia calendario en America/Santiago (no una ventana
 // rolling de 24h como el "vence pronto" de PedidosPorEnviar/home-client --
@@ -78,14 +77,23 @@ function horaLimite(fecha: string | null): string {
   });
 }
 
-function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
-  const fechaTitulo = referencia.toLocaleDateString("es-CL", {
+// Exportada (ademas de usarse internamente en descargarManifiestoDespacho)
+// para poder generar una vista previa del documento sin pasar por
+// window.open/print -- ver script de prueba usado para el mockup enviado al
+// usuario antes de publicar este cambio.
+export function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
+  // toLocaleDateString devuelve todo en minusculas ("domingo, 30 de agosto
+  // de 2026") -- se capitaliza solo la primera letra a mano (no con CSS
+  // text-transform: capitalize, que tambien pondria en mayuscula "de" y
+  // rompe el sentido de una fecha en espanol).
+  const fechaTituloRaw = referencia.toLocaleDateString("es-CL", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
     timeZone: "America/Santiago",
   });
+  const fechaTitulo = fechaTituloRaw.charAt(0).toUpperCase() + fechaTituloRaw.slice(1);
   const generadoEl = referencia.toLocaleString("es-CL", {
     dateStyle: "short",
     timeStyle: "short",
@@ -104,9 +112,7 @@ function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
           </td>
           <td>${escapeHTML(p.cliente_nombre || "Sin cliente")}</td>
           <td>${escapeHTML(itemsLabel(p)) || "—"}</td>
-          <td>${escapeHTML(ESTADO_LABELS[p.estado] ?? p.estado)}</td>
           <td class="hora">${horaLimite(p.fecha_limite_despacho)}</td>
-          <td class="total">${escapeHTML(formatCLP(p.total_pagado))}</td>
         </tr>`
     )
     .join("");
@@ -123,14 +129,47 @@ function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
     color: #1a1a1a;
     margin: 24px;
   }
-  h1 { font-size: 18px; margin: 0 0 2px; text-transform: capitalize; }
-  .subtitulo { font-size: 12px; color: #555; margin: 0 0 16px; }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 2px solid #b8860b;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+  .marca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+  }
+  .marca-badge {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, #fbbf24, #d97706);
+  }
+  .marca-badge svg { width: 14px; height: 14px; }
+  .marca-nombre {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    letter-spacing: -0.01em;
+    color: #14151b;
+  }
+  .marca-nombre .marca-io { color: #b8860b; }
+  h1 { font-size: 17px; margin: 0 0 2px; text-align: right; }
+  .subtitulo { font-size: 11px; color: #555; margin: 0; text-align: right; }
   table { width: 100%; border-collapse: collapse; font-size: 11px; }
   th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
   th { background: #f2f2f2; font-weight: 600; }
   td.check { width: 28px; text-align: center; }
   td.num { width: 26px; text-align: center; color: #777; }
-  td.hora, td.total { white-space: nowrap; }
+  td.hora { white-space: nowrap; }
   .box {
     display: inline-block;
     width: 14px;
@@ -149,8 +188,18 @@ function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
 </style>
 </head>
 <body>
-  <h1>Manifiesto de despacho — ${escapeHTML(fechaTitulo)}</h1>
-  <p class="subtitulo">${pedidos.length} pedido${pedidos.length === 1 ? "" : "s"} por despachar hoy · generado ${escapeHTML(generadoEl)}</p>
+  <header>
+    <div class="marca">
+      <span class="marca-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#14151b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z"/></svg>
+      </span>
+      <span class="marca-nombre">automatik<span class="marca-io">.io</span></span>
+    </div>
+    <div>
+      <h1>Manifiesto de despacho — ${escapeHTML(fechaTitulo)}</h1>
+      <p class="subtitulo">${pedidos.length} pedido${pedidos.length === 1 ? "" : "s"} por despachar hoy · generado ${escapeHTML(generadoEl)}</p>
+    </div>
+  </header>
   ${
     pedidos.length === 0
       ? `<p class="vacio">No hay pedidos pendientes de despacho para hoy.</p>`
@@ -162,9 +211,7 @@ function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): string {
         <th>Pedido</th>
         <th>Cliente</th>
         <th>Contenido</th>
-        <th>Estado</th>
         <th>Hora límite</th>
-        <th>Total</th>
       </tr>
     </thead>
     <tbody>${filas}</tbody>
