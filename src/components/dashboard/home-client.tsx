@@ -6,6 +6,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { KpiRangeFilter } from "@/components/dashboard/kpi-range-filter";
 import { SearchBar } from "@/components/empacador/search-bar";
+import { DescargarManifiestoButton } from "@/components/pedidos/descargar-manifiesto-button";
 import { fetchPedidos, fetchDashboardKpisRango, fetchTendenciaDiaria } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
@@ -430,9 +431,22 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
 
           {rol === "vendedor" && (
             <div className="space-y-5">
-              <div>
-                <p className="eyebrow">Ventas</p>
-                <h1 className="display mt-1 text-2xl sm:text-3xl">Gestion de <em>documentos</em></h1>
+              {/* Tarea: el vendedor no tiene "Pedidos" en su navbar (ver
+                  NAV_ITEMS en layout/navbar.tsx -- a proposito, no necesita
+                  la tabla completa) y "/" (esta pagina) es la UNICA vista a
+                  la que llega desde la navegacion normal. El boton de
+                  manifiesto ya estaba en la rama vendedor de
+                  app/pedidos/page.tsx desde que se agrego (ver PR #9), pero
+                  sin un link a esa pagina en su navbar, el vendedor no tenia
+                  forma de llegar hasta el sin escribir la URL a mano -- por
+                  eso "no salia" para el en la practica. Se agrega aca
+                  directamente, en la unica pantalla que si ve enseguida. */}
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Ventas</p>
+                  <h1 className="display mt-1 text-2xl sm:text-3xl">Gestion de <em>documentos</em></h1>
+                </div>
+                <DescargarManifiestoButton pedidos={pedidos} />
               </div>
               <div className="flex gap-0.5 rounded-xl bg-secondary/70 p-1">
                 <button onClick={() => setVendedorTab("docs")}
