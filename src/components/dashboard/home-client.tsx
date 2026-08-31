@@ -329,16 +329,27 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
 
           {rol === "empacador" && (
             <div className="space-y-0">
-              <div className="flex items-end justify-between gap-3">
+              {/* Tarea: el empacador tampoco tiene NINGUN link en su navbar
+                  (NAV_ITEMS.empacador = [] en layout/navbar.tsx -- a
+                  proposito, es el rol mas acotado) y "/" (esta pagina) es la
+                  UNICA vista a la que llega. Mismo problema que se encontro
+                  y arreglo para vendedor mas abajo: el boton de manifiesto
+                  ya estaba en la rama empacador de app/pedidos/page.tsx
+                  desde el PR #9, pero sin forma de llegar a esa pagina
+                  seguia sin "salirle" en la practica. */}
+              <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="eyebrow">Bodega</p>
                   <h1 className="display mt-1 text-2xl sm:text-3xl">
                     {empacadorTab === "pendientes" ? <>Pedidos por <em>empacar</em></> : <em>Historial</em>}
                   </h1>
                 </div>
-                <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-                  {empacadorTab === "pendientes" ? pendientes.length : historial.length}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                    {empacadorTab === "pendientes" ? pendientes.length : historial.length}
+                  </span>
+                  <DescargarManifiestoButton pedidos={pedidos} />
+                </div>
               </div>
 
               <div className="mt-3 flex gap-0.5 rounded-xl bg-secondary/70 p-1">
