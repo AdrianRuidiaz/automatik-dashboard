@@ -7,6 +7,7 @@ import { fetchPedidos } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
 import { cn } from "@/lib/utils";
+import { DescargarManifiestoButton } from "@/components/pedidos/descargar-manifiesto-button";
 import type { Pedido, RolUsuario } from "@/lib/types";
 
 // Code-splitting por rol, igual criterio que src/app/page.tsx: esta pagina
@@ -124,11 +125,14 @@ export default function PedidosPage() {
         <>
           {rol === "admin" && (
             <div className="space-y-5">
-              <div>
-                <p className="eyebrow">Gestión</p>
-                <h1 className="display mt-1 text-2xl sm:text-3xl">
-                  Todos los <em>pedidos</em>
-                </h1>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Gestión</p>
+                  <h1 className="display mt-1 text-2xl sm:text-3xl">
+                    Todos los <em>pedidos</em>
+                  </h1>
+                </div>
+                <DescargarManifiestoButton pedidos={pedidos} />
               </div>
               <OrdersTable pedidos={pedidos} initialEstadoFilter={filtroInicial} filtroIds={idsFiltro} />
             </div>
@@ -146,11 +150,14 @@ export default function PedidosPage() {
                     }
                   </h1>
                 </div>
-                {tabEmpacador === "pendientes" && (
-                  <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
-                    {pendientes.length}
-                  </span>
-                )}
+                <div className="flex items-center gap-2">
+                  {tabEmpacador === "pendientes" && (
+                    <span className="tabular rounded-full bg-secondary px-3 py-1 text-sm font-medium">
+                      {pendientes.length}
+                    </span>
+                  )}
+                  <DescargarManifiestoButton pedidos={pedidos} />
+                </div>
               </div>
 
               <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
@@ -203,11 +210,14 @@ export default function PedidosPage() {
 
           {rol === "vendedor" && (
             <div className="space-y-5">
-              <div>
-                <p className="eyebrow">Ventas</p>
-                <h1 className="display mt-1 text-2xl sm:text-3xl">
-                  Gestión de <em>documentos</em>
-                </h1>
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="eyebrow">Ventas</p>
+                  <h1 className="display mt-1 text-2xl sm:text-3xl">
+                    Gestión de <em>documentos</em>
+                  </h1>
+                </div>
+                <DescargarManifiestoButton pedidos={pedidos} />
               </div>
               <TaxDocsTable pedidos={pedidos} />
             </div>
