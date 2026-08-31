@@ -23,7 +23,7 @@
 import type { Pedido } from "@/lib/types";
 
 // "Hoy" se define como el dia calendario en America/Santiago (no una ventana
-// rolling de 24h como el "vence pronto" de PedidosPorEnviar/home-client --
+// rolling de 24h como el "vence pronto" del empacador en home-client --
 // ese criterio es para urgencia relativa en todo momento; este es para un
 // documento fisico de un dia especifico: "los pedidos que se despachan HOY").
 // Comparar strings YYYY-MM-DD (locale en-CA) en vez de horas evita todo
