@@ -36,7 +36,7 @@ export function DescargarManifiestoButton({ pedidos, className }: Props) {
         className="inline-flex items-center gap-1.5 rounded-lg border border-input bg-card px-3 py-2 text-sm font-medium transition-colors hover:border-primary/40 hover:text-primary"
       >
         <FileDown className="h-4 w-4" />
-        Descargar PDF
+        Descargar manifiesto
         {cantidad > 0 && (
           <span className="tabular ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1 text-[11px] font-bold text-primary">
             {cantidad}
