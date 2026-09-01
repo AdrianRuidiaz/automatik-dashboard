@@ -12,7 +12,7 @@ import { PdfViewerModal } from "@/components/pedidos/pdf-viewer-modal";
 // forma (Promise<{ok:true}|{ok:false,motivo}>) que ya usaba, asi que solo
 // necesita cambiar de donde importa abrirPdf.
 interface PdfViewerContextValue {
-  abrirPdf: (url: string) => Promise<{ ok: true } | { ok: false; motivo: string }>;
+  abrirPdf: (url: string, nombreCliente?: string | null) => Promise<{ ok: true } | { ok: false; motivo: string }>;
 }
 
 const PdfViewerContext = createContext<PdfViewerContextValue | null>(null);
@@ -31,8 +31,8 @@ interface DocumentoAbierto {
 export function PdfViewerProvider({ children }: { children: React.ReactNode }) {
   const [documento, setDocumento] = useState<DocumentoAbierto | null>(null);
 
-  const abrirPdf = useCallback(async (url: string) => {
-    const resultado = await fetchPdfBlob(url);
+  const abrirPdf = useCallback(async (url: string, nombreCliente?: string | null) => {
+    const resultado = await fetchPdfBlob(url, nombreCliente);
     if (!resultado.ok) return resultado;
     setDocumento({ blob: resultado.blob, nombreArchivo: resultado.nombreArchivo });
     return { ok: true as const };
