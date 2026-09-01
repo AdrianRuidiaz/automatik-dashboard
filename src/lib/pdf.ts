@@ -26,10 +26,39 @@ export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`
 // mostrarla, y si no es un PDF real avisar con un mensaje claro -- sesion
 // vencida vs. error del servidor -- en vez de dejar que el SO muestre un
 // error generico sin explicacion.
+//
+// Fix 2026-09-01 (segunda vuelta): un usuario reporto que, tras este cambio,
+// las etiquetas de pedidos Mercado Libre le seguian mostrando EXACTAMENTE
+// el mismo error nativo de Android que antes -- puntualmente en la PWA
+// instalada ("Agregar a pantalla de inicio") -- mientras que Falabella
+// abria bien. Se verifico que los archivos en Storage estan perfectos (200,
+// Content-Type y tamano correctos) para ambas plataformas, asi que el
+// problema no es el PDF ni el backend. Dos cambios para cerrar el hueco que
+// queda:
+//
+// 1) cache: "no-store" en el fetch: si el usuario ya habia intentado abrir
+//    esa MISMA etiqueta antes de este fix (cuando /api/pdf siempre
+//    devolvia el redirect 307 a /login), el navegador puede haber cacheado
+//    esa respuesta vieja bajo la misma URL exacta y seguir sirviendola sin
+//    ir a la red -- reabrir la app no lo soluciona porque no es un
+//    problema de JS desactualizado, es cache HTTP.
+//
+// 2) Navegacion en la MISMA pestana en vez de window.open(blobUrl,
+//    "_blank"): un blob: URL solo es resoluble dentro del proceso/contexto
+//    de navegacion exacto que lo creo. Abrirlo en una ventana/pestana NUEVA
+//    funciona en Chrome de escritorio, pero en una PWA instalada de
+//    Android ("WebAPK") esa apertura puede tratarse como una navegacion
+//    fuera del scope de la app y delegarse a un visor de PDF nativo del
+//    sistema -- que no puede resolver blob: URLs en absoluto y muestra el
+//    mismo "No se puede abrir el archivo PDF" del bug original, sin pasar
+//    por nuestro fetch ni por los mensajes de error de abajo. Crear un
+//    <a href={blobUrl}> y hacerle click() SIN target="_blank" navega la
+//    pestana actual: el blob nunca sale del proceso que lo creo, asi que
+//    no hay contexto nuevo que pueda perderlo.
 export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
   let resp: Response;
   try {
-    resp = await fetch(pdfUrl(url));
+    resp = await fetch(pdfUrl(url), { cache: "no-store" });
   } catch {
     return { ok: false, motivo: "No se pudo cargar la etiqueta. Revisa tu conexión e inténtalo de nuevo." };
   }
@@ -44,11 +73,12 @@ export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false;
 
   const blob = await resp.blob();
   const blobUrl = URL.createObjectURL(blob);
-  const ventana = window.open(blobUrl, "_blank");
-  if (!ventana) {
-    URL.revokeObjectURL(blobUrl);
-    return { ok: false, motivo: "Tu navegador bloqueó la ventana. Habilita ventanas emergentes para este sitio." };
-  }
+  const enlace = document.createElement("a");
+  enlace.href = blobUrl;
+  enlace.rel = "noopener";
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
   // No hay evento fiable de "el visor ya termino de cargar el blob", asi
   // que se revoca con un margen generoso en vez de hacerlo de inmediato
   // (revocar muy pronto deja al visor mostrando un PDF en blanco/roto).
