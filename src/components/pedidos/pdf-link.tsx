@@ -37,8 +37,13 @@ interface PdfLinkProps {
   // que el archivo descargado se llame "etiqueta_<comprador>.pdf" en vez de
   // siempre "etiqueta.pdf" -- ver el comentario en src/lib/pdf.ts. Opcional
   // porque no todos los llamadores tienen el pedido completo a mano; sin el
-  // (o null) el nombre de archivo cae al comportamiento de siempre.
+  // (o null) el nombre de archivo cae al numero de pedido.
   nombreCliente?: string | null;
+  // Fix 2026-09-01 (decimoprimera vuelta): numero de pedido (id_plataforma),
+  // usado como respaldo cuando no hay nombre de cliente disponible -- ver el
+  // comentario en src/lib/pdf.ts. Sin el (o null) el nombre de archivo cae
+  // directo al ultimo recurso (segmento generico de la URL).
+  numeroPedido?: string | null;
   className?: string;
   children: React.ReactNode;
   stopPropagation?: boolean;
@@ -50,7 +55,7 @@ interface PdfLinkProps {
 // src/lib/pdf-viewer-context.tsx) -- misma firma de siempre
 // (Promise<{ok:true}|{ok:false,motivo}>), pero ahora en vez de descargar el
 // archivo lo abre en el visor en pantalla completa dentro de la app.
-export function PdfLink({ url, nombreCliente, className, children, stopPropagation, as = "button" }: PdfLinkProps) {
+export function PdfLink({ url, nombreCliente, numeroPedido, className, children, stopPropagation, as = "button" }: PdfLinkProps) {
   const { abrirPdf } = usePdfViewer();
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -60,7 +65,7 @@ export function PdfLink({ url, nombreCliente, className, children, stopPropagati
     if (cargando) return;
     setError(null);
     setCargando(true);
-    const resultado = await abrirPdf(url, nombreCliente);
+    const resultado = await abrirPdf(url, nombreCliente, numeroPedido);
     setCargando(false);
     if (!resultado.ok) setError(resultado.motivo);
   };

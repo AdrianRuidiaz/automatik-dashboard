@@ -93,7 +93,7 @@ export default function PedidoDetailClient({ initialPedido }: PedidoDetailClient
                 </div>
               </div>
               {pedido.etiqueta_url ? (
-                <PdfLink url={pedido.etiqueta_url} nombreCliente={pedido.cliente_nombre}
+                <PdfLink url={pedido.etiqueta_url} nombreCliente={pedido.cliente_nombre} numeroPedido={pedido.id_plataforma}
                   className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40 disabled:opacity-60">
                   <FileText className="h-4 w-4 text-rose-500" /> Ver etiqueta
                 </PdfLink>

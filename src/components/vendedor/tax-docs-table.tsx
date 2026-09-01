@@ -101,7 +101,7 @@ function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) 
           <div>
             <p className="eyebrow mb-2.5 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Etiqueta</p>
             {pedido.etiqueta_url ? (
-              <PdfLink url={pedido.etiqueta_url} nombreCliente={pedido.cliente_nombre}
+              <PdfLink url={pedido.etiqueta_url} nombreCliente={pedido.cliente_nombre} numeroPedido={pedido.id_plataforma}
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40 disabled:opacity-60">
                 <FileText className="h-4 w-4 text-rose-500" /> Ver PDF
               </PdfLink>

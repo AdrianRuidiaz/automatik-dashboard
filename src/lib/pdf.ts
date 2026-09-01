@@ -148,14 +148,24 @@ export interface PdfFetchError {
 // etiquetas seguidas las va numerando "etiqueta.pdf", "etiqueta (1).pdf",
 // etc. sin ninguna forma de distinguirlas despues. A pedido del usuario, se
 // arma el nombre a partir del nombre del comprador (pedido.cliente_nombre,
-// que ya viaja en cada PdfLink) en vez del segmento de la URL. Si no hay
-// nombre de cliente (pedido manual, dato faltante) se cae al nombre viejo.
+// que ya viaja en cada PdfLink) en vez del segmento de la URL.
 //
-// sanitizarNombreArchivo: cliente_nombre es texto libre (tildes, espacios,
-// a veces simbolos) -- no todo eso es valido/comodo en un nombre de archivo
-// en todos los sistemas operativos. Se le quitan los acentos (normalize
-// NFD + descartar los diacriticos) y se reemplaza cualquier caracter que no
-// sea alfanumerico por "_", para terminar con algo legible y portable.
+// Fix 2026-09-01 (decimoprimera vuelta -- fallback al numero de pedido): el
+// nombre de cliente no siempre esta disponible (pedido manual, dato
+// faltante desde la plataforma de origen) -- antes, en ese caso, se caia
+// directo al segmento generico de la URL ("etiqueta.pdf"), perdiendo de
+// nuevo la forma de distinguir el archivo. A pedido del usuario, ahora ese
+// caso cae primero al numero de pedido (pedido.id_plataforma -- el mismo
+// identificador que ya se muestra en toda la UI, ver order-detail.tsx/
+// pedido-detail-client.tsx) antes de llegar al segmento de la URL como
+// ultimo recurso.
+//
+// sanitizarNombreArchivo: tanto cliente_nombre como id_plataforma son texto
+// que puede traer tildes, espacios o simbolos -- no todo eso es valido/comodo
+// en un nombre de archivo en todos los sistemas operativos. Se le quitan los
+// acentos (normalize NFD + descartar los diacriticos) y se reemplaza
+// cualquier caracter que no sea alfanumerico por "_", para terminar con algo
+// legible y portable.
 function sanitizarNombreArchivo(texto: string): string {
   return texto
     .normalize("NFD")
@@ -165,7 +175,11 @@ function sanitizarNombreArchivo(texto: string): string {
     .slice(0, 60);
 }
 
-export async function fetchPdfBlob(url: string, nombreCliente?: string | null): Promise<PdfFetchResult | PdfFetchError> {
+export async function fetchPdfBlob(
+  url: string,
+  nombreCliente?: string | null,
+  numeroPedido?: string | null,
+): Promise<PdfFetchResult | PdfFetchError> {
   let resp: Response;
   try {
     resp = await fetch(pdfUrl(url), { cache: "no-store" });
@@ -182,14 +196,18 @@ export async function fetchPdfBlob(url: string, nombreCliente?: string | null): 
   }
 
   const blob = await resp.blob();
-  const nombreSanitizado = nombreCliente ? sanitizarNombreArchivo(nombreCliente) : "";
-  // Con nombre de cliente disponible: "etiqueta_<comprador>.pdf". Sin el
-  // (o si queda vacio tras sanitizar, ej. un nombre que era solo simbolos),
-  // se cae al comportamiento de siempre: el ultimo segmento de la URL de
-  // Storage (hoy, siempre "etiqueta.pdf").
-  const nombreArchivo = nombreSanitizado
-    ? `etiqueta_${nombreSanitizado}.pdf`
-    : url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
+  const nombreClienteSanitizado = nombreCliente ? sanitizarNombreArchivo(nombreCliente) : "";
+  const numeroPedidoSanitizado = numeroPedido ? sanitizarNombreArchivo(numeroPedido) : "";
+  // Orden de preferencia: nombre del comprador > numero de pedido > segmento
+  // generico de la URL de Storage (hoy, siempre "etiqueta.pdf"). Cualquiera
+  // de los dos primeros puede faltar o quedar vacio tras sanitizar (ej. un
+  // nombre que era solo simbolos) -- en ese caso se sigue probando el
+  // siguiente de la lista en vez de cortar directo al ultimo recurso.
+  const nombreArchivo = nombreClienteSanitizado
+    ? `etiqueta_${nombreClienteSanitizado}.pdf`
+    : numeroPedidoSanitizado
+      ? `etiqueta_${numeroPedidoSanitizado}.pdf`
+      : url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
   return { ok: true, blob, nombreArchivo };
 }
 
