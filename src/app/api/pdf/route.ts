@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { compress as repararPdf } from "qpdf-compress";
+import { repairXrefSize } from "@/lib/pdfRepair";
 
 // Proxy para servir PDFs desde Supabase Storage sin error de CORS/Content-Disposition
 //
@@ -32,23 +32,37 @@ import { compress as repararPdf } from "qpdf-compress";
 // qpdf: TODAS (111/111) tienen algun defecto en la tabla xref -- no es un
 // caso aislado, es sistemico a como Mercado Libre/Prince genera estos PDFs
 // para esta cuenta. De esas 111: 106 tienen el defecto leve (Size mal
-// contado, cosmetico) y pdf-lib deberia poder con la mayoria, pero en la
-// practica su parser es fragil e impredecible -- a veces tira error, a veces
-// no, dependiendo de detalles finos del archivo (confirmado reproduciendo
-// distintos niveles de corrupcion a proposito). Las otras 5 tienen corrupcion
-// real de datos (el stream de la tabla xref esta truncado/dañado a nivel de
-// bytes, "inflate: incorrect header check") -- posiblemente por una subida
+// contado, cosmetico) y las otras 5 tienen corrupcion real de datos (el
+// stream de la tabla xref esta truncado/dañado a nivel de bytes,
+// "inflate: incorrect header check") -- posiblemente por una subida
 // interrumpida a Storage -- que NINGUNA libreria puede reparar porque
 // faltan bytes de verdad, no es un problema de interpretacion.
 //
-// Fix: se reemplaza pdf-lib por qpdf-compress (motor real de qpdf via
-// addon nativo N-API, Apache-2.0 -- sin problemas de licencia AGPL como
-// tienen otras alternativas mas robustas como mupdf). Se probo contra las
-// 111 etiquetas reales de este cliente: repara las 106 con defecto leve
-// (0 advertencias de qpdf --check despues, pixeles identicos verificados
-// renderizando antes/despues) y falla de forma limpia (sin tirar la
-// respuesta entera) en las 5 con corrupcion real de datos -- para esas 5
-// no queda otra que volver a generar la etiqueta desde Mercado Libre.
+// Fix 2026-09-01 (sexta vuelta -- nada de libreria nativa): se probo
+// reemplazar pdf-lib por qpdf-compress (addon nativo N-API sobre qpdf real,
+// Apache-2.0). Reparaba las 106 etiquetas con defecto leve a la perfeccion
+// en el sandbox local... pero su binario prebuildeado para Linux exige
+// GLIBC_2.35, una version mas nueva que la que ofrece el runtime real de
+// Vercel -- el build fallaba con "GLIBC_2.35' not found". La variante
+// alternativa "musl" del mismo paquete tampoco sirve: esta linkeada
+// dinamicamente contra musl, que no esta presente en el runtime de Vercel
+// (que es glibc). Osea, NINGUN binario nativo prebuildeado de ese paquete
+// corre en el runtime real de Vercel (mas alla de que localmente sí
+// funcionaba perfecto).
+//
+// En vez de seguir dependiendo de una libreria/binario externo completo
+// (con todo el riesgo de licencia y de compatibilidad de plataforma que
+// eso trae), se aprovecha que el defecto identificado es MINIMO y esta
+// perfectamente entendido: el diccionario del objeto XRef final es texto
+// plano (solo el stream comprimido que sigue no lo es), asi que alcanza
+// con localizar y corregir el numero de /Size con una edicion de texto
+// quirurgica -- sin parsear el resto del archivo y sin ninguna dependencia
+// externa. Implementado en src/lib/pdfRepair.ts. Validado contra las 111
+// etiquetas reales: repara las 106 con el defecto leve (0 advertencias de
+// qpdf --check despues, salida pixel-identica a la original) y no toca
+// (a proposito) los 5 archivos con corrupcion real de datos -- para esos 5
+// no hay reparacion posible por software, hay que volver a generar la
+// etiqueta desde Mercado Libre.
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
 
@@ -67,9 +81,14 @@ export async function GET(req: NextRequest) {
 
     let cuerpo: Buffer = buffer;
     try {
-      cuerpo = await repararPdf(buffer);
+      const { buffer: reparado, patched, reason } = repairXrefSize(buffer);
+      if (patched) {
+        cuerpo = reparado;
+      } else {
+        console.error("PDF sin reparacion aplicable (se sirve el original):", reason);
+      }
     } catch (repairErr) {
-      console.error("No se pudo reparar el PDF con qpdf-compress, se sirve el original:", repairErr);
+      console.error("Error inesperado reparando el PDF, se sirve el original:", repairErr);
     }
 
     return new NextResponse(Buffer.from(cuerpo), {
