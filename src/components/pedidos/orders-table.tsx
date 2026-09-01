@@ -218,7 +218,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = 
     {
       id: "etiqueta", header: "PDF",
       cell: ({ row }) => row.original.etiqueta_url ? (
-        <PdfLink url={row.original.etiqueta_url} nombreCliente={row.original.cliente_nombre} stopPropagation
+        <PdfLink url={row.original.etiqueta_url} nombreCliente={row.original.cliente_nombre} numeroPedido={row.original.id_plataforma} stopPropagation
           className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-secondary disabled:opacity-60">
           <FileText className="h-3.5 w-3.5 text-red-500" />
           <span className="hidden md:inline">PDF</span>
@@ -397,7 +397,7 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = 
                     <span className="tabular text-sm font-medium">{formatCLP(p.total_pagado)}</span>
                     <EstadoBadge estado={p.estado} />
                     {p.etiqueta_url && (
-                      <PdfLink url={p.etiqueta_url} nombreCliente={p.cliente_nombre} as="span" stopPropagation
+                      <PdfLink url={p.etiqueta_url} nombreCliente={p.cliente_nombre} numeroPedido={p.id_plataforma} as="span" stopPropagation
                         className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         <FileText className="h-3 w-3 text-red-500" /> PDF
                       </PdfLink>
