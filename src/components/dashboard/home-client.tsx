@@ -7,6 +7,7 @@ import { KpiCards } from "@/components/dashboard/kpi-cards";
 import { KpiRangeFilter } from "@/components/dashboard/kpi-range-filter";
 import { SearchBar } from "@/components/empacador/search-bar";
 import { DescargarManifiestoButton } from "@/components/pedidos/descargar-manifiesto-button";
+import { PdfLink } from "@/components/pedidos/pdf-link";
 import { fetchPedidos, fetchDashboardKpisRango, fetchTendenciaDiaria } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
@@ -53,8 +54,6 @@ const ManualOrderForm = dynamic(
   () => import("@/components/vendedor/manual-order-form").then((m) => m.ManualOrderForm),
   { ssr: false, loading: () => <div className="skeleton h-64 w-full" /> }
 );
-
-const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 export interface HomeInitialData {
   pedidos: Pedido[];
@@ -308,10 +307,10 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
                           </td>
                           <td className="px-4 py-3">
                             {p.etiqueta_url ? (
-                              <a href={pdfUrl(p.etiqueta_url)} target="_blank" rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground">
+                              <PdfLink url={p.etiqueta_url}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-60">
                                 <FileText className="h-3.5 w-3.5 text-rose-500" /> PDF
-                              </a>
+                              </PdfLink>
                             ) : <span className="text-xs text-muted-foreground">Sin etiqueta</span>}
                           </td>
                         </tr>

@@ -9,8 +9,7 @@ import { ESTADO_LABELS, ESTADO_COLORS } from "@/lib/types";
 import type { Pedido } from "@/lib/types";
 import { Navbar } from "@/components/layout/navbar";
 import { useRealtimeTable } from "@/lib/hooks/use-realtime-table";
-
-const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
+import { PdfLink } from "@/components/pedidos/pdf-link";
 
 interface PedidoDetailClientProps {
   /**
@@ -94,10 +93,10 @@ export default function PedidoDetailClient({ initialPedido }: PedidoDetailClient
                 </div>
               </div>
               {pedido.etiqueta_url ? (
-                <a href={pdfUrl(pedido.etiqueta_url)} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40">
+                <PdfLink url={pedido.etiqueta_url}
+                  className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40 disabled:opacity-60">
                   <FileText className="h-4 w-4 text-rose-500" /> Descargar etiqueta
-                </a>
+                </PdfLink>
               ) : (
                 <span className="rounded-lg border border-dashed border-input px-4 py-2.5 text-xs text-muted-foreground">
                   Sin etiqueta disponible

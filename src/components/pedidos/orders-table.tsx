@@ -7,12 +7,12 @@ import {
 } from "@tanstack/react-table";
 import { ArrowUpDown, Search, Download, FileText, ChevronDown, ChevronRight, CalendarDays, Filter, X, PackageX } from "lucide-react";
 import { cn, formatCLP, formatFechaCorta } from "@/lib/utils";
-import { pdfUrl } from "@/lib/pdf";
 import { exportarPedidosCSV, exportarPedidosXLSX } from "@/lib/export-pedidos";
 import type { Pedido, Plataforma, EstadoPedido } from "@/lib/types";
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 import { OrderDetail } from "@/components/pedidos/order-detail";
 import { EstadoVacio } from "@/components/ui/estado-vacio";
+import { PdfLink } from "@/components/pedidos/pdf-link";
 
 // Filtro pseudo-estado usado solo en esta tabla, no existe como valor real
 // de pedido.estado. Combina "paid" + "ready_to_ship" -- lo mismo que cuenta
@@ -218,11 +218,11 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = 
     {
       id: "etiqueta", header: "PDF",
       cell: ({ row }) => row.original.etiqueta_url ? (
-        <button className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-secondary"
-          onClick={(e) => { e.stopPropagation(); window.open(pdfUrl(row.original.etiqueta_url!), "_blank"); }}>
+        <PdfLink url={row.original.etiqueta_url} stopPropagation
+          className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-secondary disabled:opacity-60">
           <FileText className="h-3.5 w-3.5 text-red-500" />
           <span className="hidden md:inline">PDF</span>
-        </button>
+        </PdfLink>
       ) : <span className="text-xs text-muted-foreground">-</span>,
     },
   ], [expandedRows]);
@@ -397,13 +397,10 @@ export function OrdersTable({ pedidos, initialEstadoFilter = "all", filtroIds = 
                     <span className="tabular text-sm font-medium">{formatCLP(p.total_pagado)}</span>
                     <EstadoBadge estado={p.estado} />
                     {p.etiqueta_url && (
-                      <span
-                        role="button"
-                        onClick={(e) => { e.stopPropagation(); window.open(pdfUrl(p.etiqueta_url!), "_blank"); }}
-                        className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      >
+                      <PdfLink url={p.etiqueta_url} as="span" stopPropagation
+                        className="inline-flex items-center gap-1 rounded border border-input px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         <FileText className="h-3 w-3 text-red-500" /> PDF
-                      </span>
+                      </PdfLink>
                     )}
                   </div>
                 </div>

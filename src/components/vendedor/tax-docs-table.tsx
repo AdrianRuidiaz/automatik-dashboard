@@ -17,8 +17,7 @@ import {
 import { EstadoBadge } from "@/components/pedidos/estado-badge";
 import { EvidenciaGaleria } from "@/components/pedidos/evidencia-galeria";
 import { FiltroPills } from "@/components/pedidos/filtro-pills";
-
-const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
+import { PdfLink } from "@/components/pedidos/pdf-link";
 
 interface TaxDocsTableProps { pedidos: Pedido[]; }
 
@@ -102,10 +101,10 @@ function DetalleVendedor({ pedido, docs }: { pedido: Pedido; docs: Archivo[] }) 
           <div>
             <p className="eyebrow mb-2.5 flex items-center gap-1.5"><FileText className="h-3 w-3" /> Etiqueta</p>
             {pedido.etiqueta_url ? (
-              <a href={pdfUrl(pedido.etiqueta_url)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40">
+              <PdfLink url={pedido.etiqueta_url}
+                className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm transition-colors hover:border-primary/40 disabled:opacity-60">
                 <FileText className="h-4 w-4 text-rose-500" /> Ver PDF
-              </a>
+              </PdfLink>
             ) : <p className="text-xs text-muted-foreground">Sin etiqueta</p>}
           </div>
 
