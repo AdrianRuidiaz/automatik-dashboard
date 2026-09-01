@@ -18,6 +18,12 @@ const PUBLIC_PATHS = [
   "/apple-icon",
   "/icon-192",
   "/icon-512",
+  // Chequeo de version para forzar reload cuando hay una pestana/PWA
+  // corriendo JS de un deploy anterior (ver next.config.ts y
+  // pwa-register.tsx) -- tiene que poder pedirse siempre, este o no
+  // vencida la sesion, para no confundir "no hay sesion" con "no hay
+  // deploy nuevo".
+  "/api/version",
 ];
 
 export async function proxy(request: NextRequest) {
