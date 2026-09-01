@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { repairXrefSize } from "@/lib/pdfRepair";
 
+// Motivos de "no se reparo nada" que son esperables/normales (el PDF ya
+// esta bien formado, o directamente no es del tipo que puede tener este
+// defecto) y por lo tanto no deben registrarse como error.
+function isBenignNoRepair(reason: string): boolean {
+  return reason === "already-consistent" || reason === "not-xref-stream" || reason === "no-index-field";
+}
+
 // Proxy para servir PDFs desde Supabase Storage sin error de CORS/Content-Disposition
 //
 // Fix 2026-09-01 (cuarta vuelta -- causa raiz real de "no se puede abrir el
@@ -84,8 +91,17 @@ export async function GET(req: NextRequest) {
       const { buffer: reparado, patched, reason } = repairXrefSize(buffer);
       if (patched) {
         cuerpo = reparado;
+      } else if (isBenignNoRepair(reason)) {
+        // No se encontro el defecto conocido y todo indica que el PDF ya
+        // esta bien formado (nada que reparar) -- no es una condicion de
+        // error, se sirve el original tal cual.
+        console.log("PDF sin defecto de xref conocido (se sirve el original tal cual):", reason);
       } else {
-        console.error("PDF sin reparacion aplicable (se sirve el original):", reason);
+        // Casos que SI ameritan atencion: no se pudo ni siquiera localizar
+        // el objeto XRef final (probable corrupcion real de datos, como los
+        // 5 casos identificados en el analisis de 2026-09-01), o un
+        // mismatch de /Size que no calza con el patron conocido.
+        console.error("PDF con posible corrupcion real, no reparable (se sirve el original):", reason);
       }
     } catch (repairErr) {
       console.error("Error inesperado reparando el PDF, se sirve el original:", repairErr);

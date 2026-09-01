@@ -107,6 +107,12 @@ export function repairXrefSize(buf: Buffer): RepairResult {
     if (start + count > impliedSize) impliedSize = start + count;
   }
 
+  if (declaredSize === impliedSize) {
+    // /Size ya es correcto -- este PDF no tiene el defecto, esta bien
+    // formado. No es un caso de error.
+    return { buffer: buf, patched: false, reason: "already-consistent" };
+  }
+
   // Solo se corrige el patron exacto ya confirmado en produccion (Size
   // declarado = tamano real + 1). Cualquier otra discrepancia se deja
   // intacta a proposito: no queremos "adivinar" reparaciones para
