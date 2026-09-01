@@ -55,6 +55,29 @@ export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`
 //    <a href={blobUrl}> y hacerle click() SIN target="_blank" navega la
 //    pestana actual: el blob nunca sale del proceso que lo creo, asi que
 //    no hay contexto nuevo que pueda perderlo.
+//
+// Fix 2026-09-01 (tercera vuelta): la navegacion misma-pestana de arriba
+// SI se quedaba dentro de la app (la URL en la barra confirmaba
+// blob:https://automatik-dashboard.vercel.app/...), pero el visor de PDF
+// integrado de Chrome Android (PDFium) mostraba el mismo "No se puede
+// abrir el archivo PDF" -- esta vez el error viene del propio renderizador,
+// no de un salto de contexto. Se confirmo con una lectura de los primeros
+// bytes reales de varias etiquetas: las de Mercado Libre son PDFs 1.6
+// generados como documento estructurado (Catalog + arbol de Pages, tipico
+// de un PDF armado con texto/vectores), mientras que las de Falabella son
+// PDFs 1.7 armados como una sola imagen incrustada -- ambos son PDFs
+// perfectamente validos, pero el PDFium que trae Android en la PWA
+// instalada es conocido por fallar con ciertos PDFs "de documento" de
+// transportistas (fuentes incrustadas, formularios, filtros de imagen
+// poco comunes) mientras que un PDF-imagen simple no le genera problema.
+// Esto no se puede arreglar desde el codigo de Automatik -- es un bug del
+// renderizador del sistema, no del archivo. La forma confiable de
+// evitarlo es no depender de que el navegador RENDERICE el PDF: se le
+// pone el atributo download al <a>, asi el navegador siempre lo guarda
+// como archivo (a Descargas) en vez de intentar abrirlo el mismo, y el
+// usuario lo abre despues con cualquier app de PDF de su telefono (Google
+// Drive, Adobe Acrobat, etc.), que suelen ser mucho mas tolerantes que el
+// visor minimo integrado.
 export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
   let resp: Response;
   try {
@@ -73,15 +96,20 @@ export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false;
 
   const blob = await resp.blob();
   const blobUrl = URL.createObjectURL(blob);
+  // Nombre de archivo para la descarga: se toma el ultimo segmento de la
+  // URL original en Storage (siempre "etiqueta.pdf" hoy) en vez de dejar
+  // que el navegador use el nombre interno del blob (un UUID ilegible).
+  const nombreArchivo = url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
   const enlace = document.createElement("a");
   enlace.href = blobUrl;
+  enlace.download = nombreArchivo;
   enlace.rel = "noopener";
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
-  // No hay evento fiable de "el visor ya termino de cargar el blob", asi
-  // que se revoca con un margen generoso en vez de hacerlo de inmediato
-  // (revocar muy pronto deja al visor mostrando un PDF en blanco/roto).
+  // No hay evento fiable de "la descarga ya termino", asi que se revoca
+  // con un margen generoso en vez de hacerlo de inmediato (revocar muy
+  // pronto puede cortar la descarga a mitad de camino).
   setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
   return { ok: true };
 }
