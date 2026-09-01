@@ -29,7 +29,7 @@
 // clickeable con mouse/teclado.
 
 import { useState } from "react";
-import { abrirPdf } from "@/lib/pdf";
+import { usePdfViewer } from "@/lib/pdf-viewer-context";
 
 interface PdfLinkProps {
   url: string;
@@ -39,7 +39,13 @@ interface PdfLinkProps {
   as?: "button" | "span";
 }
 
+// Fix 2026-09-01 (novena vuelta): abrirPdf ya no viene de src/lib/pdf.ts
+// directo, sino del contexto global PdfViewerProvider (ver
+// src/lib/pdf-viewer-context.tsx) -- misma firma de siempre
+// (Promise<{ok:true}|{ok:false,motivo}>), pero ahora en vez de descargar el
+// archivo lo abre en el visor en pantalla completa dentro de la app.
 export function PdfLink({ url, className, children, stopPropagation, as = "button" }: PdfLinkProps) {
+  const { abrirPdf } = usePdfViewer();
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
 
