@@ -5,10 +5,10 @@ import { Ban, Camera, FileText, Info, Loader2, Package } from "lucide-react";
 import { formatCLP, formatFechaLarga } from "@/lib/utils";
 import { fetchArchivos, cancelarPedido } from "@/lib/api";
 import { useRole } from "@/lib/role-context";
-import { pdfUrl } from "@/lib/pdf";
 import type { Pedido, Archivo } from "@/lib/types";
 import { EvidenciaGaleria } from "@/components/pedidos/evidencia-galeria";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PdfLink } from "@/components/pedidos/pdf-link";
 
 export function OrderDetail({ pedido }: { pedido: Pedido }) {
   const { usuario } = useRole();
@@ -138,10 +138,10 @@ export function OrderDetail({ pedido }: { pedido: Pedido }) {
           </h4>
           {pedido.etiqueta_url ? (
             <div className="flex flex-col gap-2">
-              <a href={pdfUrl(pedido.etiqueta_url!)} target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors">
+              <PdfLink url={pedido.etiqueta_url}
+                className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors disabled:opacity-60">
                 <FileText className="h-4 w-4 text-red-500 shrink-0" /> Descargar PDF
-              </a>
+              </PdfLink>
             </div>
           ) : <p className="text-xs text-muted-foreground">Sin etiqueta disponible</p>}
 

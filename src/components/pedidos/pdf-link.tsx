@@ -1,0 +1,77 @@
+"use client";
+
+// Tarea (fix 2026-09-01, "no se puede abrir el PDF"): reemplaza el patron
+// <a href={pdfUrl(url)} target="_blank"> / window.open(pdfUrl(url)) usado
+// en 6 lugares (detalle de pedido -- hay DOS componentes de detalle
+// distintos, home de vendedor/tarjeta de pedido, documentos tributarios,
+// tabla de pedidos y su tarjeta mobile) por un boton que llama a
+// abrirPdf() -- ver el comentario largo en src/lib/pdf.ts para el porque.
+// Mantiene el mismo look & feel (recibe className/children igual que el
+// <a> que reemplaza) y agrega un mensaje de error inline en vez de dejar
+// que el sistema operativo muestre uno generico sin explicacion.
+//
+// stopPropagation: la tabla de pedidos (orders-table.tsx) usa este boton
+// DENTRO de una fila que tiene su propio onClick (abre el detalle) -- el
+// <a>/span original llamaba a e.stopPropagation() en el evento de click
+// original antes de abrir el PDF. Como aca el click dispara un flujo async
+// (fetch), stopPropagation tiene que llamarse de forma SINCRONICA dentro
+// del handler, antes de cualquier await -- por eso el prop existe y se usa
+// explicitamente en el onClick, no se puede lograr envolviendo el boton en
+// otro elemento con su propio stopPropagation (el evento ya habria
+// burbujeado para cuando el await se resuelve).
+//
+// as="span": la tarjeta mobile de la tabla de pedidos (orders-table.tsx)
+// pone este componente DENTRO de un <button> (la fila completa es
+// clickeable). HTML no permite anidar <button> dentro de <button> -- el
+// original usaba <span role="button"> ahi mismo por lo mismo. Con
+// as="span" se renderiza como span+role=button+tabIndex en vez de un
+// <button> real, evitando el anidamiento invalido mientras se mantiene
+// clickeable con mouse/teclado.
+
+import { useState } from "react";
+import { abrirPdf } from "@/lib/pdf";
+
+interface PdfLinkProps {
+  url: string;
+  className?: string;
+  children: React.ReactNode;
+  stopPropagation?: boolean;
+  as?: "button" | "span";
+}
+
+export function PdfLink({ url, className, children, stopPropagation, as = "button" }: PdfLinkProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [cargando, setCargando] = useState(false);
+
+  const activar = async (e: { stopPropagation: () => void }) => {
+    if (stopPropagation) e.stopPropagation();
+    if (cargando) return;
+    setError(null);
+    setCargando(true);
+    const resultado = await abrirPdf(url);
+    setCargando(false);
+    if (!resultado.ok) setError(resultado.motivo);
+  };
+
+  return (
+    <span className="inline-flex flex-col items-start gap-1">
+      {as === "span" ? (
+        <span
+          role="button"
+          tabIndex={0}
+          aria-disabled={cargando}
+          onClick={activar}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activar(e); } }}
+          className={className}
+        >
+          {children}
+        </span>
+      ) : (
+        <button type="button" disabled={cargando} onClick={activar} className={className}>
+          {children}
+        </button>
+      )}
+      {error && <span className="max-w-[220px] text-xs text-rose-600">{error}</span>}
+    </span>
+  );
+}
