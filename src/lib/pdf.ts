@@ -2,7 +2,7 @@
 // linkear directo a Supabase Storage, para poder forzar Content-Disposition
 // y evitar problemas de CORS/mixed-content en algunos navegadores moviles.
 // Compartido entre OrdersTable (columna PDF, tarjeta mobile) y OrderDetail
-// (boton "Ver PDF").
+// (boton "Descargar PDF").
 export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 // Tarea (fix 2026-09-01, "no se puede abrir el PDF"): /api/pdf esta detras
@@ -56,40 +56,46 @@ export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`
 //    pestana actual: el blob nunca sale del proceso que lo creo, asi que
 //    no hay contexto nuevo que pueda perderlo.
 //
-// Fix 2026-09-01 (tercera vuelta -- diagnostico INCORRECTO, ver septima
-// vuelta): en su momento se penso que la navegacion misma-pestana de arriba
-// SI se quedaba dentro de la app, pero el visor de PDF integrado de Chrome
-// Android (PDFium) mostraba el mismo "No se puede abrir el archivo PDF", y
-// se le atribuyo a una supuesta incompatibilidad de PDFium con PDFs "de
-// documento" (texto/vectores, como los que genera Mercado Libre) versus
-// PDFs "de imagen" (como los de Falabella, que siempre abrieron bien). Se
-// forzo la descarga (atributo download) para evitar depender del render
-// inline. Este diagnostico resulto ser INCORRECTO -- ver la vuelta cuarta a
-// septima en el historial: la causa real nunca fue el tipo de PDF, sino
-// que los PDFs de Mercado Libre (generados con "Prince") tienen un defecto
-// real en su tabla xref, que /api/pdf ya repara del lado del servidor
-// (ver src/app/api/pdf/route.ts y src/lib/pdfRepair.ts). Con esa causa raiz
-// resuelta, forzar la descarga ya no hace falta.
+// Fix 2026-09-01 (tercera vuelta): la navegacion misma-pestana de arriba SI
+// se quedaba dentro de la app (la URL en la barra confirmaba
+// blob:https://automatik-dashboard.vercel.app/...), pero el visor de PDF
+// integrado de Chrome Android (PDFium) mostraba el mismo "No se puede abrir
+// el archivo PDF" -- esta vez el error viene del propio renderizador, no de
+// un salto de contexto. En su momento se le atribuyo a una diferencia
+// estructural entre los PDFs "de documento" de Mercado Libre (texto/
+// vectores, tipico de Prince) vs. los PDFs "de imagen" de Falabella. Se
+// forzo la descarga (atributo download) para no depender del render
+// inline: el navegador siempre guarda el archivo (a Descargas) en vez de
+// intentar abrirlo el mismo, y el usuario lo abre despues con cualquier app
+// de PDF de su telefono (Google Drive, Adobe Acrobat, etc.), que suelen ser
+// mucho mas tolerantes que el visor minimo integrado.
 //
-// Fix 2026-09-01 (septima vuelta -- volver a abrir en vez de descargar):
-// con el defecto de xref reparado del lado del servidor (repara 106 de 111
-// etiquetas reales de este cliente), ya no hace falta forzar la descarga
-// como workaround de un bug que en realidad nunca fue de PDFium. Se vuelve
-// al comportamiento de "abrir" en vez de "descargar": se quita el atributo
-// download del <a> y se navega la MISMA pestana al blob (igual que la
-// segunda vuelta) -- a proposito NO se usa window.open(blob, "_blank") ni
-// target="_blank": esa es la causa raiz ya confirmada y documentada arriba
-// (segunda vuelta) de que la PWA instalada de Android delegue la apertura a
-// un visor de PDF del sistema que no puede resolver blob: URLs. La
-// navegacion misma-pestana es la unica forma de "abrir sin descargar" que
-// ya se probo que funciona dentro del scope de la PWA instalada.
+// Fix 2026-09-01 (cuarta a sexta vuelta -- causa raiz del propio PDF): se
+// encontro un defecto real en la tabla xref de los PDFs de Mercado Libre
+// (/Size mal declarado, generado por Prince) y se implemento una
+// reparacion del lado del servidor en /api/pdf (ver route.ts y
+// pdfRepair.ts) -- repara 106 de las 111 etiquetas reales de este cliente.
 //
-// Nota: para los pedidos cuya etiqueta tiene corrupcion real de datos (no
-// solo el defecto de xref reparable -- ver comentario en pdfRepair.ts), NI
-// este cambio ni ningun otro del lado del cliente puede arreglarlo: el
-// archivo que llega desde Supabase Storage esta genuinamente incompleto.
-// Esos pedidos necesitan que la etiqueta se vuelva a generar/sincronizar
-// desde Mercado Libre.
+// Fix 2026-09-01 (septima vuelta -- REVERTIDA, ver octava): con el defecto
+// de xref ya reparado del lado del servidor, se penso que forzar la
+// descarga ya no hacia falta y se volvio a la navegacion misma-pestana sin
+// el atributo download (como en la segunda vuelta), a pedido del usuario.
+//
+// Fix 2026-09-01 (octava vuelta -- la tercera vuelta tenia razon despues de
+// todo): el usuario probo la septima vuelta abriendo muchas etiquetas al
+// azar y TODAS le dieron error al renderizar inline -- no solo las 5 con
+// corrupcion real de datos ya conocidas. Esto muestra que el diagnostico de
+// la tercera vuelta iba en la direccion correcta: el visor de PDF integrado
+// (PDFium, en la PWA instalada de Android) tiene un problema real
+// renderizando los PDFs "de documento" de Mercado Libre que va MAS ALLA
+// del defecto de xref -- reparar el xref no alcanza para que el visor
+// inline los muestre. Reparar el xref sigue siendo valioso (deja el
+// archivo bien formado para cualquier app externa que lo abra despues),
+// pero no soluciona el render inline. Se vuelve a forzar la descarga
+// (unica configuracion que se probo de forma consistente y confiable con
+// las etiquetas reales de este cliente): el usuario ya no depende de que
+// el visor integrado renderice el archivo, sino que lo abre con la app de
+// PDF que prefiera en su telefono.
 export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
   let resp: Response;
   try {
@@ -108,11 +114,20 @@ export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false;
 
   const blob = await resp.blob();
   const blobUrl = URL.createObjectURL(blob);
+  // Nombre de archivo para la descarga: se toma el ultimo segmento de la
+  // URL original en Storage (siempre "etiqueta.pdf" hoy) en vez de dejar
+  // que el navegador use el nombre interno del blob (un UUID ilegible).
+  const nombreArchivo = url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
   const enlace = document.createElement("a");
   enlace.href = blobUrl;
+  enlace.download = nombreArchivo;
   enlace.rel = "noopener";
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
+  // No hay evento fiable de "la descarga ya termino", asi que se revoca
+  // con un margen generoso en vez de hacerlo de inmediato (revocar muy
+  // pronto puede cortar la descarga a mitad de camino).
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
   return { ok: true };
 }

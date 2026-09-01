@@ -95,7 +95,7 @@ export default function PedidoDetailClient({ initialPedido }: PedidoDetailClient
               {pedido.etiqueta_url ? (
                 <PdfLink url={pedido.etiqueta_url}
                   className="inline-flex items-center gap-2 rounded-lg border border-input bg-card px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40 disabled:opacity-60">
-                  <FileText className="h-4 w-4 text-rose-500" /> Ver etiqueta
+                  <FileText className="h-4 w-4 text-rose-500" /> Descargar etiqueta
                 </PdfLink>
               ) : (
                 <span className="rounded-lg border border-dashed border-input px-4 py-2.5 text-xs text-muted-foreground">
