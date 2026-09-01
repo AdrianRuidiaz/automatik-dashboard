@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PDFDocument } from "pdf-lib";
+import { compress as repararPdf } from "qpdf-compress";
 
 // Proxy para servir PDFs desde Supabase Storage sin error de CORS/Content-Disposition
 //
@@ -23,12 +23,32 @@ import { PDFDocument } from "pdf-lib";
 // imagen: pixeles identicos). Las etiquetas de Falabella no tienen este
 // defecto, por eso siempre abrieron bien.
 //
-// Fix: usar pdf-lib (JS puro, corre bien en una funcion serverless) para
-// cargar y volver a guardar el PDF antes de servirlo, reparando la tabla
-// xref. Si pdf-lib no logra parsear el archivo (PDF realmente corrupto, no
-// solo con este defecto puntual), se sirve el original tal cual en vez de
-// fallar la respuesta completa -- mejor un PDF que quizas tenga el mismo
-// problema de antes que un error 500 duro.
+// Fix 2026-09-01 (quinta vuelta -- pdf-lib no alcanza): el usuario reporto
+// que, tras la cuarta vuelta, algunas etiquetas de ML SEGUIAN saliendo
+// dañadas. Los logs del servidor mostraron que pdf-lib tiraba un error real
+// al intentar repararlas ("Invalid object ref", "Expected instance of e...")
+// y el codigo caia al fallback de servir el original (todavia roto). Se
+// bajaron y analizaron las 111 etiquetas ML de este cliente una por una con
+// qpdf: TODAS (111/111) tienen algun defecto en la tabla xref -- no es un
+// caso aislado, es sistemico a como Mercado Libre/Prince genera estos PDFs
+// para esta cuenta. De esas 111: 106 tienen el defecto leve (Size mal
+// contado, cosmetico) y pdf-lib deberia poder con la mayoria, pero en la
+// practica su parser es fragil e impredecible -- a veces tira error, a veces
+// no, dependiendo de detalles finos del archivo (confirmado reproduciendo
+// distintos niveles de corrupcion a proposito). Las otras 5 tienen corrupcion
+// real de datos (el stream de la tabla xref esta truncado/dañado a nivel de
+// bytes, "inflate: incorrect header check") -- posiblemente por una subida
+// interrumpida a Storage -- que NINGUNA libreria puede reparar porque
+// faltan bytes de verdad, no es un problema de interpretacion.
+//
+// Fix: se reemplaza pdf-lib por qpdf-compress (motor real de qpdf via
+// addon nativo N-API, Apache-2.0 -- sin problemas de licencia AGPL como
+// tienen otras alternativas mas robustas como mupdf). Se probo contra las
+// 111 etiquetas reales de este cliente: repara las 106 con defecto leve
+// (0 advertencias de qpdf --check despues, pixeles identicos verificados
+// renderizando antes/despues) y falla de forma limpia (sin tirar la
+// respuesta entera) en las 5 con corrupcion real de datos -- para esas 5
+// no queda otra que volver a generar la etiqueta desde Mercado Libre.
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
 
@@ -43,17 +63,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No se pudo obtener el PDF" }, { status: resp.status });
     }
 
-    const buffer = await resp.arrayBuffer();
+    const buffer = Buffer.from(await resp.arrayBuffer());
 
-    let cuerpo = Buffer.from(buffer);
+    let cuerpo: Buffer = buffer;
     try {
-      const documento = await PDFDocument.load(buffer, { ignoreEncryption: true });
-      cuerpo = Buffer.from(await documento.save());
+      cuerpo = await repararPdf(buffer);
     } catch (repairErr) {
-      console.error("No se pudo reparar el PDF con pdf-lib, se sirve el original:", repairErr);
+      console.error("No se pudo reparar el PDF con qpdf-compress, se sirve el original:", repairErr);
     }
 
-    return new NextResponse(cuerpo, {
+    return new NextResponse(Buffer.from(cuerpo), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": "inline",
