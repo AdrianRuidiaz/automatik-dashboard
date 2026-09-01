@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, Loader2, Printer, X } from "lucide-react";
 import { descargarBlob } from "@/lib/pdf";
 
 interface PdfViewerModalProps {
@@ -54,7 +54,11 @@ export function PdfViewerModal({ blob, nombreArchivo, onClose }: PdfViewerModalP
           canvas.height = viewport.height;
           canvas.style.width = `${viewport.width / dpr}px`;
           canvas.style.height = `${viewport.height / dpr}px`;
-          canvas.className = "rounded-lg shadow-lg bg-white";
+          // Fix (imprimir desde la app): "pdf-print-page" es el gancho que
+          // usa la hoja de estilos de impresion (ver globals.css) para
+          // escalar cada pagina al ancho de la hoja y separarlas con un
+          // salto de pagina -- ver el boton "Imprimir" mas abajo.
+          canvas.className = "rounded-lg shadow-lg bg-white pdf-print-page";
           contenedor.appendChild(canvas);
 
           // pdfjs-dist v6: RenderParameters requiere "canvas" (no alcanza
@@ -92,12 +96,32 @@ export function PdfViewerModal({ blob, nombreArchivo, onClose }: PdfViewerModalP
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
+  // Fix (imprimir desde la app): "pdf-viewer-dialog" es el gancho que usa
+  // la regla global `body > *:not(.pdf-viewer-dialog) { display: none }`
+  // (ver globals.css) para ocultar el resto de la pagina (navbar, tabla,
+  // etc.) al imprimir -- el modal es HERMANO directo de esos elementos en
+  // el DOM (RoleProvider/PdfViewerProvider en layout.tsx no agregan ningun
+  // <div> propio, son puros Context.Provider), asi que basta con excluirlo
+  // a el de la regla en vez de tener que ocultar/mostrar cada nodo.
+  // print:static/print:overflow-visible neutralizan el "fixed inset-0" y el
+  // "overflow-auto" (pensados para pantalla) que si no, recortarian el
+  // documento a una sola altura de viewport en vez de dejar que el
+  // navegador pagine el PDF completo.
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col" role="dialog" aria-modal="true">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-background/95 px-4 py-3">
+    <div className="pdf-viewer-dialog fixed inset-0 z-[100] flex flex-col print:static print:h-auto"
+      role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm print:hidden" onClick={onClose} />
+      <div className="relative z-10 flex items-center justify-between gap-3 border-b border-white/10 bg-background/95 px-4 py-3 print:hidden">
         <p className="truncate text-sm font-medium text-foreground">{nombreArchivo}</p>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            disabled={estado !== "listo"}
+            className="btn-premium inline-flex items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs hover:bg-secondary transition-colors disabled:opacity-60"
+          >
+            <Printer className="h-3.5 w-3.5" /> Imprimir
+          </button>
           <button
             type="button"
             onClick={() => descargarBlob(blob, nombreArchivo)}
@@ -115,7 +139,7 @@ export function PdfViewerModal({ blob, nombreArchivo, onClose }: PdfViewerModalP
           </button>
         </div>
       </div>
-      <div className="relative z-10 flex-1 overflow-auto px-4 py-6">
+      <div className="relative z-10 flex-1 overflow-auto px-4 py-6 print:overflow-visible print:p-0">
         {estado === "cargando" && (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -133,7 +157,7 @@ export function PdfViewerModal({ blob, nombreArchivo, onClose }: PdfViewerModalP
             </button>
           </div>
         )}
-        <div ref={containerRef} className="mx-auto flex max-w-3xl flex-col items-center gap-4" />
+        <div ref={containerRef} className="mx-auto flex max-w-3xl flex-col items-center gap-4 print:max-w-none print:gap-0" />
       </div>
     </div>
   );

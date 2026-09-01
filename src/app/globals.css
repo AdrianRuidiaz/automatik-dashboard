@@ -306,6 +306,42 @@
 .light .pill[class*="text-slate-300"] { color: hsl(215 16% 32%); background-color: hsl(215 20% 90%); border-color: hsl(215 18% 76%); }
 .light .pill[class*="text-amber-300"] { color: hsl(32 75% 30%); background-color: hsl(38 75% 87%); border-color: hsl(38 60% 70%); }
 .light .pill[class*="text-emerald-300"] { color: hsl(155 55% 25%); background-color: hsl(155 50% 86%); border-color: hsl(155 42% 68%); }
-.light .pill[class*="text-teal-300"] { color: hsl(175 55% 23%); background-color: hsl(175 45% 85%); border-color: hsl(175 38% 66%); }
 .light .pill[class*="text-blue-300"] { color: hsl(215 65% 34%); background-color: hsl(215 60% 89%); border-color: hsl(215 48% 72%); }
+.light .pill[class*="text-teal-300"] { color: hsl(175 55% 23%); background-color: hsl(175 45% 85%); border-color: hsl(175 38% 66%); }
 .light .pill[class*="text-red-300"] { color: hsl(0 62% 34%); background-color: hsl(0 58% 89%); border-color: hsl(0 45% 74%); }
+
+/* ── Impresion del visor de PDF (PdfLink -> PdfViewerModal) ──
+   Tarea: boton "Imprimir" (window.print()) en el visor de la etiqueta, para
+   no depender de descargarla primero y abrirla en otra app. Sin estas
+   reglas, imprimir hoy imprimiria la pagina de fondo ENTERA (navbar, tabla
+   de pedidos, etc.) ademas del modal (fondo oscuro, botones), porque el
+   modal es solo un <div> mas dentro de <body> -- no un overlay separado del
+   resto de la app.
+   La regla de abajo se apoya en un detalle real del DOM (ver layout.tsx):
+   RoleProvider y PdfViewerProvider son puros Context.Provider (no agregan
+   ningun <div> propio), asi que el modal (marcado con la clase
+   "pdf-viewer-dialog", ver pdf-viewer-modal.tsx) termina siendo HERMANO
+   directo del contenido de la pagina dentro de <body>. Ocultar con
+   display:none todo hermano que NO sea el modal saca esa pagina de fondo
+   del flujo de impresion por completo (a diferencia de visibility:hidden,
+   que preserva el alto y dejaria paginas en blanco antes de la etiqueta).
+   Dentro del modal, print:hidden / print:overflow-visible en el propio
+   componente ocultan el fondo oscuro y los botones, y liberan el
+   overflow-auto/fixed pensados para pantalla para que el navegador pueda
+   paginar el documento completo. */
+@media print {
+  body > *:not(.pdf-viewer-dialog) { display: none !important; }
+
+  .pdf-print-page {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .pdf-print-page:last-child { page-break-after: auto; break-after: auto; }
+
+  body { background: #fff !important; background-image: none !important; }
+}
