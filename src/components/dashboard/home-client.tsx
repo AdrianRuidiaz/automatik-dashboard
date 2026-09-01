@@ -307,7 +307,7 @@ export default function HomePageClient({ initialData }: HomePageClientProps) {
                           </td>
                           <td className="px-4 py-3">
                             {p.etiqueta_url ? (
-                              <PdfLink url={p.etiqueta_url}
+                              <PdfLink url={p.etiqueta_url} nombreCliente={p.cliente_nombre}
                                 className="inline-flex items-center gap-1.5 rounded-lg border border-input px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-60">
                                 <FileText className="h-3.5 w-3.5 text-rose-500" /> PDF
                               </PdfLink>

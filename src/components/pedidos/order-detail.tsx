@@ -138,7 +138,7 @@ export function OrderDetail({ pedido }: { pedido: Pedido }) {
           </h4>
           {pedido.etiqueta_url ? (
             <div className="flex flex-col gap-2">
-              <PdfLink url={pedido.etiqueta_url}
+              <PdfLink url={pedido.etiqueta_url} nombreCliente={pedido.cliente_nombre}
                 className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors disabled:opacity-60">
                 <FileText className="h-4 w-4 text-red-500 shrink-0" /> Ver PDF
               </PdfLink>

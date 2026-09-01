@@ -140,7 +140,32 @@ export interface PdfFetchError {
   motivo: string;
 }
 
-export async function fetchPdfBlob(url: string): Promise<PdfFetchResult | PdfFetchError> {
+// Fix 2026-09-01 (decima vuelta -- nombre de archivo): el usuario pregunto
+// si el archivo guardado puede llevar el numero de pedido o el nombre del
+// comprador -- hoy SIEMPRE se guarda como "etiqueta.pdf" (el ultimo segmento
+// de la URL de Storage, que es igual para todos los pedidos por el patron de
+// paths ${cliente_id}/${pedido.id}/etiqueta.pdf), asi que descargar varias
+// etiquetas seguidas las va numerando "etiqueta.pdf", "etiqueta (1).pdf",
+// etc. sin ninguna forma de distinguirlas despues. A pedido del usuario, se
+// arma el nombre a partir del nombre del comprador (pedido.cliente_nombre,
+// que ya viaja en cada PdfLink) en vez del segmento de la URL. Si no hay
+// nombre de cliente (pedido manual, dato faltante) se cae al nombre viejo.
+//
+// sanitizarNombreArchivo: cliente_nombre es texto libre (tildes, espacios,
+// a veces simbolos) -- no todo eso es valido/comodo en un nombre de archivo
+// en todos los sistemas operativos. Se le quitan los acentos (normalize
+// NFD + descartar los diacriticos) y se reemplaza cualquier caracter que no
+// sea alfanumerico por "_", para terminar con algo legible y portable.
+function sanitizarNombreArchivo(texto: string): string {
+  return texto
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60);
+}
+
+export async function fetchPdfBlob(url: string, nombreCliente?: string | null): Promise<PdfFetchResult | PdfFetchError> {
   let resp: Response;
   try {
     resp = await fetch(pdfUrl(url), { cache: "no-store" });
@@ -157,10 +182,14 @@ export async function fetchPdfBlob(url: string): Promise<PdfFetchResult | PdfFet
   }
 
   const blob = await resp.blob();
-  // Nombre de archivo para la descarga: se toma el ultimo segmento de la
-  // URL original en Storage (siempre "etiqueta.pdf" hoy) en vez de dejar
-  // que el navegador use el nombre interno del blob (un UUID ilegible).
-  const nombreArchivo = url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
+  const nombreSanitizado = nombreCliente ? sanitizarNombreArchivo(nombreCliente) : "";
+  // Con nombre de cliente disponible: "etiqueta_<comprador>.pdf". Sin el
+  // (o si queda vacio tras sanitizar, ej. un nombre que era solo simbolos),
+  // se cae al comportamiento de siempre: el ultimo segmento de la URL de
+  // Storage (hoy, siempre "etiqueta.pdf").
+  const nombreArchivo = nombreSanitizado
+    ? `etiqueta_${nombreSanitizado}.pdf`
+    : url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
   return { ok: true, blob, nombreArchivo };
 }
 
