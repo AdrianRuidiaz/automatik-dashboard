@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // qpdf-compress es un addon nativo (N-API, .node binario) usado en
+  // /api/pdf. Turbopack intenta bundlear su dist/index.js como si fuera
+  // ESM puro y falla el build ("non-ecmascript placeable asset ... asset
+  // is not placeable in ESM chunks") porque ese archivo carga el binario
+  // nativo con require() dinamico. serverExternalPackages le dice a
+  // Next.js que deje este paquete fuera del bundle y lo cargue tal cual
+  // desde node_modules en tiempo de ejecucion (igual que en un Node
+  // normal), que es como este tipo de addon nativo debe consumirse.
+  serverExternalPackages: ["qpdf-compress"],
   images: {
     remotePatterns: [
       {
