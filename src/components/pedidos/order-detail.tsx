@@ -140,7 +140,7 @@ export function OrderDetail({ pedido }: { pedido: Pedido }) {
             <div className="flex flex-col gap-2">
               <PdfLink url={pedido.etiqueta_url}
                 className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-background transition-colors disabled:opacity-60">
-                <FileText className="h-4 w-4 text-red-500 shrink-0" /> Ver PDF
+                <FileText className="h-4 w-4 text-red-500 shrink-0" /> Descargar PDF
               </PdfLink>
             </div>
           ) : <p className="text-xs text-muted-foreground">Sin etiqueta disponible</p>}
