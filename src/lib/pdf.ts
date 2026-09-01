@@ -2,7 +2,7 @@
 // linkear directo a Supabase Storage, para poder forzar Content-Disposition
 // y evitar problemas de CORS/mixed-content en algunos navegadores moviles.
 // Compartido entre OrdersTable (columna PDF, tarjeta mobile) y OrderDetail
-// (boton "Descargar PDF").
+// (boton "Ver PDF" -- ver PdfLink/PdfViewerProvider).
 export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`;
 
 // Tarea (fix 2026-09-01, "no se puede abrir el PDF"): /api/pdf esta detras
@@ -96,7 +96,51 @@ export const pdfUrl = (url: string) => `/api/pdf?url=${encodeURIComponent(url)}`
 // las etiquetas reales de este cliente): el usuario ya no depende de que
 // el visor integrado renderice el archivo, sino que lo abre con la app de
 // PDF que prefiera en su telefono.
-export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
+// Fix 2026-09-01 (novena vuelta -- se abandona el visor nativo del todo): el
+// usuario pidio explicitamente poder ver la etiqueta con un clic, sin que se
+// dispare una descarga (la octava vuelta soluciono "no abre" a costa de
+// "siempre descarga", que tampoco es lo que se necesita). Volver a probar
+// render inline vs. descarga forzada (como en la septima/octava vuelta) no
+// tiene sentido sin mas: desde la ultima prueba fallida (octava vuelta) se
+// encontraron y corrigieron TRES causas reales que pudieron haber estado
+// contaminando aquella prueba --
+//   1) la app servia JS de un deploy viejo en pestanas/PWA ya abiertas (sin
+//      relacion con PDFs -- ver next.config.ts/pwa-register.tsx);
+//   2) 6 etiquetas en Supabase estaban genuinamente corruptas (bytes
+//      distintos a los de Airtable, que si abrian bien);
+//   3) la causa de (2): un nodo de n8n pedia la etiqueta a Mercado Libre por
+//      SEGUNDA vez en vez de reusar la ya descargada, y esa segunda llamada
+//      no siempre devolvia los mismos bytes.
+// Con esas tres causas de fondo corregidas, repetir la septima vuelta
+// (delegarle el render al visor nativo del sistema/navegador) seguiria
+// exponiendo a los mismos riesgos que ya la hicieron fallar una vez: que
+// visor abre el PDF, si respeta las cookies de sesion, si lo trata como
+// "descargar" o "ver", varia por SO/navegador/PWA y quedo fuera de nuestro
+// control. En vez de apostar una tercera vez al visor nativo, el render pasa
+// a hacerse DENTRO de la app, con pdf.js (pdfjs-dist) dibujando cada pagina
+// en un <canvas> propio (ver pdf-viewer-modal.tsx) -- eso evita por completo
+// que el sistema operativo o el navegador decidan como abrir el archivo: ya
+// no es una "apertura de archivo", es JS corriendo en la misma pagina.
+//
+// Esta funcion se separa en dos partes reutilizables:
+//  - fetchPdfBlob: el mismo fetch + validacion de content-type + mensajes de
+//    error de las vueltas anteriores (sesion vencida vs. error generico),
+//    pero devuelve el blob en vez de forzar una accion sobre el.
+//  - descargarBlob: el mecanismo de descarga (creado en la primera vuelta),
+//    que se conserva como boton explicito "Descargar" dentro del visor y
+//    como salida de emergencia si el render con canvas llegara a fallar.
+export interface PdfFetchResult {
+  ok: true;
+  blob: Blob;
+  nombreArchivo: string;
+}
+
+export interface PdfFetchError {
+  ok: false;
+  motivo: string;
+}
+
+export async function fetchPdfBlob(url: string): Promise<PdfFetchResult | PdfFetchError> {
   let resp: Response;
   try {
     resp = await fetch(pdfUrl(url), { cache: "no-store" });
@@ -113,11 +157,15 @@ export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false;
   }
 
   const blob = await resp.blob();
-  const blobUrl = URL.createObjectURL(blob);
   // Nombre de archivo para la descarga: se toma el ultimo segmento de la
   // URL original en Storage (siempre "etiqueta.pdf" hoy) en vez de dejar
   // que el navegador use el nombre interno del blob (un UUID ilegible).
   const nombreArchivo = url.split("/").pop()?.split("?")[0] || "etiqueta.pdf";
+  return { ok: true, blob, nombreArchivo };
+}
+
+export function descargarBlob(blob: Blob, nombreArchivo: string) {
+  const blobUrl = URL.createObjectURL(blob);
   const enlace = document.createElement("a");
   enlace.href = blobUrl;
   enlace.download = nombreArchivo;
@@ -129,5 +177,4 @@ export async function abrirPdf(url: string): Promise<{ ok: true } | { ok: false;
   // con un margen generoso en vez de hacerlo de inmediato (revocar muy
   // pronto puede cortar la descarga a mitad de camino).
   setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-  return { ok: true };
 }

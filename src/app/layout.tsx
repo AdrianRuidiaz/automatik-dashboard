@@ -3,6 +3,7 @@ import { Inter, Instrument_Serif } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { RoleProvider } from "@/lib/role-context";
 import { PwaRegister } from "@/components/pwa-register";
+import { PdfViewerProvider } from "@/lib/pdf-viewer-context";
 import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
 import { getPerfilServidor } from "@/lib/auth-server";
 import "./globals.css";
@@ -72,7 +73,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <PwaRegister />
-        <RoleProvider initialProfile={perfilInicial}>{children}</RoleProvider>
+        <RoleProvider initialProfile={perfilInicial}>
+          {/* Visor de PDF en pantalla completa (pdf.js sobre canvas), montado
+              una sola vez para toda la app -- ver src/lib/pdf-viewer-context.tsx
+              y el comentario "novena vuelta" en src/lib/pdf.ts. */}
+          <PdfViewerProvider>{children}</PdfViewerProvider>
+        </RoleProvider>
         <SpeedInsights />
       </body>
     </html>
