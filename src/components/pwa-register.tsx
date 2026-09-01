@@ -29,20 +29,54 @@ const UPDATE_CHECK_INTERVAL_MS = 20 * 60 * 1000; // 20 min
 //  - Ademas next.config.ts fuerza Cache-Control: no-cache en /sw.js para
 //    que ese registration.update() siempre compare contra el archivo real
 //    del servidor y no contra una copia vieja cacheada por el navegador.
+//
+// Tarea 2026-09-01 ("aun no funciona" tras un fix ya confirmado como
+// desplegado): el mecanismo de arriba SOLO detecta cambios en el contenido
+// de sw.js -- y sw.js no cambia entre despliegues normales de la app (no
+// hay ningun motivo para tocarlo cuando lo que cambia es, por ejemplo,
+// src/lib/pdf.ts). Eso significa que registration.update() nunca encuentra
+// una version nueva, controllerchange nunca dispara, y una pestana/PWA que
+// ya estaba abierta antes de un deploy puede seguir corriendo JS viejo
+// indefinidamente. Se agrega un segundo chequeo, independiente del service
+// worker, en la misma cadencia (inmediato / visibilitychange / focus / cada
+// 20 min): comparar el commit SHA con el que se compilo el bundle actual
+// (NEXT_PUBLIC_BUILD_SHA, ver next.config.ts) contra el SHA que devuelve
+// /api/version -- que siempre refleja el deploy que esta corriendo en el
+// servidor en ese momento. Si difieren, se recarga la pagina igual que con
+// controllerchange. Con esto ya no hace falta que sw.js cambie para que la
+// app se entere de una version nueva.
+const BUILD_SHA = process.env.NEXT_PUBLIC_BUILD_SHA || "";
+
 export function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
 
     let reloading = false;
-
-    // Si un service worker nuevo toma el control, recargamos una sola vez
-    // para que la pestana/app pase a usar la version nueva.
-    const onControllerChange = () => {
+    const reloadOnce = () => {
       if (reloading) return;
       reloading = true;
       window.location.reload();
     };
-    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    // Si un service worker nuevo toma el control, recargamos una sola vez
+    // para que la pestana/app pase a usar la version nueva.
+    navigator.serviceWorker.addEventListener("controllerchange", reloadOnce);
+
+    // Chequeo de version por SHA (ver comentario arriba): independiente del
+    // service worker, cubre los deploys que no tocan sw.js -- es decir,
+    // casi todos.
+    const checkBuildVersion = () => {
+      if (!BUILD_SHA) return; // no deberia pasar en Vercel, pero por las dudas no rompemos nada
+      fetch("/api/version", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data: { sha: string | null } | null) => {
+          if (data?.sha && data.sha !== BUILD_SHA) reloadOnce();
+        })
+        .catch(() => {
+          // Sin conexion o falla la red: no hacemos nada, se reintenta en
+          // el proximo chequeo.
+        });
+    };
 
     let cleanupListeners: (() => void) | undefined;
 
@@ -54,6 +88,7 @@ export function PwaRegister() {
             // Sin conexion o falla la red: no hacemos nada, se reintenta
             // en el proximo chequeo.
           });
+          checkBuildVersion();
         };
 
         // Chequeo inmediato: cubre el caso de que ya haya una version
@@ -78,10 +113,17 @@ export function PwaRegister() {
       })
       .catch((err) => {
         console.error("No se pudo registrar el service worker:", err);
+        // Si el service worker no se pudo registrar igual queremos el
+        // chequeo de version por SHA -- no depende de el.
+        checkBuildVersion();
+        const intervalId = window.setInterval(() => {
+          if (document.visibilityState === "visible") checkBuildVersion();
+        }, UPDATE_CHECK_INTERVAL_MS);
+        cleanupListeners = () => window.clearInterval(intervalId);
       });
 
     return () => {
-      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      navigator.serviceWorker.removeEventListener("controllerchange", reloadOnce);
       cleanupListeners?.();
     };
   }, []);
