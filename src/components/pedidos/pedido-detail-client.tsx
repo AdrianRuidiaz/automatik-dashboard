@@ -63,11 +63,30 @@ export default function PedidoDetailClient({ initialPedido }: PedidoDetailClient
     channelName: "pedido-detalle-rt",
   });
 
+  // Fix (boton "Volver" no responde entrando desde una notificacion push):
+  // cuando esta pagina se abre como la primera (y unica) entrada de la
+  // pestaña -- el service worker abre un link de notificacion con
+  // clients.openWindow() en una ventana nueva si la app no estaba ya abierta
+  // (ver public/sw.js), y lo mismo pasa con un bookmark o un link
+  // compartido -- no existe ninguna entrada previa en el historial del
+  // navegador. router.back() delega en history.back(), que sin una entrada
+  // anterior simplemente no hace nada (sin error, sin aviso): el boton se
+  // sentia "roto". window.history.length <= 1 identifica ese caso (nada
+  // antes de esta pagina dentro de esta pestaña); ahi se manda a la lista de
+  // pedidos en vez de intentar volver a un historial que no existe.
+  const handleVolver = () => {
+    if (typeof window !== "undefined" && window.history.length <= 1) {
+      router.push("/pedidos");
+    } else {
+      router.back();
+    }
+  };
+
   return (
     <div>
       <Navbar />
       <main className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
-        <button onClick={() => router.back()}
+        <button onClick={handleVolver}
           className="mb-5 flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Volver
         </button>
