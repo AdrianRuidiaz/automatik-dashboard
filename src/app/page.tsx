@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import HomePageClient, { type HomeInitialData } from "@/components/dashboard/home-client";
 import { getPerfilServidor } from "@/lib/auth-server";
 import { getSupabaseServer } from "@/lib/supabase-server";
@@ -57,7 +58,38 @@ async function getInitialData(): Promise<HomeInitialData | null> {
   }
 }
 
-export default async function HomePage() {
+// Tarea (Speed Insights movil, 2026-09-03): el adelanto de arriba mejoro el
+// contenido del HTML, pero en movil (RES 63, "/" en 59) resulto contra-
+// producente para FCP/LCP: al ser HomePage entera un Server Component
+// async, Next.js no manda NINGUN byte de HTML hasta que getInitialData()
+// termina -- 5 consultas (perfil + 4 en paralelo) contra Supabase
+// (us-west-2), que desde un celular en Chile hablandole a la funcion de
+// Vercel (iad1) ya suma latencia de sobra antes de sumarle la ida y vuelta
+// extra a la base de datos. "/pedidos" (sin ningun adelanto server-side,
+// puro fetch del cliente) mide 91 -- justamente porque su HTML sale de
+// inmediato sin esperar nada.
+//
+// HomeInitialDataLoader() aisla el await en un Server Component hijo,
+// envuelto en <Suspense>: React/Next.js puede mandar el HTML de todo lo de
+// AFUERA del Suspense (que aca es nada, pero destraba el streaming) de
+// inmediato, y el contenido real llega en un chunk aparte apenas
+// getInitialData() resuelve. El fallback es <HomePageClient
+// initialData={null} />, exactamente el mismo componente en su estado "sin
+// semilla" que ya sabia renderizar antes de este cambio (esqueletos de
+// carga) -- no es una pantalla nueva, es la misma pantalla de siempre
+// mientras se espera. Y como loadData() en el cliente igual se dispara
+// SIEMPRE al montar (con o sin initialData), el resultado final que ve el
+// usuario es identico -- esto solo cambia CUANDO llega el HTML, no QUE
+// datos se terminan mostrando.
+async function HomeInitialDataLoader() {
   const initialData = await getInitialData();
   return <HomePageClient initialData={initialData} />;
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<HomePageClient initialData={null} />}>
+      <HomeInitialDataLoader />
+    </Suspense>
+  );
 }
