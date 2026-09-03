@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import PedidoDetailClient from "@/components/pedidos/pedido-detail-client";
 import { getSupabaseServer } from "@/lib/supabase-server";
 import { fetchPedidoServer } from "@/lib/api-server";
@@ -33,12 +34,32 @@ async function getInitialPedido(id: string): Promise<Pedido | null> {
   }
 }
 
+// Tarea (Speed Insights movil, 2026-09-03): igual que en "/" (ver
+// app/page.tsx), tener toda la pagina como Server Component async con un
+// await bloqueante retrasaba CADA byte de HTML hasta que fetchPedidoServer
+// resolvia -- en movil, contra Supabase (us-west-2) desde la funcion de
+// Vercel (iad1), eso empuja el score de 67 a "necesita mejorar" (60). Se
+// aisla ese await en PedidoDetailLoader(), un Server Component hijo dentro
+// de <Suspense>: el fallback es <PedidoDetailClient initialPedido={null} />,
+// el mismo estado "sin semilla" (esqueleto) que el componente ya sabia
+// mostrar antes de este cambio. cargarPedido() en el cliente sigue
+// disparandose siempre al montar, con o sin semilla, asi que el dato final
+// que termina viendo el usuario es identico -- este cambio solo adelanta
+// CUANDO sale el HTML, no que se muestra.
+async function PedidoDetailLoader({ id }: { id: string }) {
+  const initialPedido = await getInitialPedido(id);
+  return <PedidoDetailClient initialPedido={initialPedido} />;
+}
+
 export default async function PedidoDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const initialPedido = await getInitialPedido(id);
-  return <PedidoDetailClient initialPedido={initialPedido} />;
+  return (
+    <Suspense fallback={<PedidoDetailClient initialPedido={null} />}>
+      <PedidoDetailLoader id={id} />
+    </Suspense>
+  );
 }
