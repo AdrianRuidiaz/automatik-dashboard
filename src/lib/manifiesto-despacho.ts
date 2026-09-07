@@ -40,12 +40,27 @@ function diaSantiago(fechaISO: string): string {
  * verdad, no pedidos.estado) y cuyo fecha_limite_despacho cae ese dia.
  * Pedidos sin fecha_limite_despacho no se incluyen (no hay como saber si
  * corresponden a hoy). Orden ascendente por fecha_limite_despacho.
+ *
+ * FIX 2026-09-07: ademas de cancelled/returned/not_paid, se excluyen
+ * tambien shipped y delivered. Motivo (ver comentario igual de detallado en
+ * app/api/pedidos/[id]/empacar/route.ts): empacado_en es la unica fuente de
+ * verdad para "ya se empaco" porque un pedido puede llegar a estado
+ * 'shipped' via resincronizacion de n8n (ML/Falabella ya lo reportan
+ * enviado) SIN que el empacador haya pasado nunca por "Marcar como
+ * empacado" en la app -- ese pedido nunca tiene empacado_en, asi que el
+ * filtro `!p.empacado_en` por si solo no lo saca del manifiesto aunque ya
+ * se haya despachado de verdad. Se agrega el chequeo de estado como
+ * segunda señal (independiente de empacado_en) para cubrir ese caso: un
+ * pedido ya 'shipped'/'delivered' no necesita marcarse de nuevo para
+ * despacharse hoy, sin importar que su fecha_limite_despacho caiga hoy.
  */
+const ESTADOS_YA_DESPACHADOS: Array<Pedido["estado"]> = ["cancelled", "returned", "not_paid", "shipped", "delivered"];
+
 export function pedidosParaDespacharHoy(pedidos: Pedido[], referencia: Date = new Date()): Pedido[] {
   const hoyStr = diaSantiago(referencia.toISOString());
 
   return pedidos
-    .filter((p) => !p.empacado_en && !["cancelled", "returned", "not_paid"].includes(p.estado))
+    .filter((p) => !p.empacado_en && !ESTADOS_YA_DESPACHADOS.includes(p.estado))
     .filter((p) => p.fecha_limite_despacho && diaSantiago(p.fecha_limite_despacho) === hoyStr)
     .sort((a, b) => {
       const fa = a.fecha_limite_despacho ? new Date(a.fecha_limite_despacho).getTime() : 0;
