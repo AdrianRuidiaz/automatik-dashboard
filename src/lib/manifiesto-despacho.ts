@@ -183,7 +183,14 @@ export function generarManifiestoHTML(pedidos: Pedido[], referencia: Date): stri
   .footer { margin-top: 16px; font-size: 10px; color: #999; }
   @media print {
     body { margin: 10mm; }
-    @page { size: A4 landscape; margin: 10mm; }
+    /* FIX 2026-09-07: estaba en A4 landscape -- con dias de muchos pedidos
+       (bastantes filas), el largo util de la hoja en horizontal (~190mm)
+       alcanzaba para bastantes menos filas por pagina que en vertical
+       (~277mm), obligando a mas paginas de las necesarias. En vertical
+       entran mas pedidos por hoja; el unico costo es que "Contenido" tiene
+       menos ancho y puede envolver a 2 lineas mas seguido, aceptable frente
+       a ganar filas por pagina. */
+    @page { size: A4 portrait; margin: 10mm; }
   }
 </style>
 </head>
