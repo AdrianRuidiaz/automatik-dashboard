@@ -1,1 +1,117 @@
-aW1wb3J0IHR5cGUgeyBNZXRhZGF0YSwgVmlld3BvcnQgfSBmcm9tICJuZXh0IjsKaW1wb3J0IHsgU3VzcGVuc2UgfSBmcm9tICJyZWFjdCI7CmltcG9ydCB7IEludGVyLCBJbnN0cnVtZW50X1NlcmlmIH0gZnJvbSAibmV4dC9mb250L2dvb2dsZSI7CmltcG9ydCB7IFNwZWVkSW5zaWdodHMgfSBmcm9tICJAdmVyY2VsL3NwZWVkLWluc2lnaHRzL25leHQiOwppbXBvcnQgeyBSb2xlUHJvdmlkZXIgfSBmcm9tICJAL2xpYi9yb2xlLWNvbnRleHQiOwppbXBvcnQgeyBQd2FSZWdpc3RlciB9IGZyb20gIkAvY29tcG9uZW50cy9wd2EtcmVnaXN0ZXIiOwppbXBvcnQgeyBQZGZWaWV3ZXJQcm92aWRlciB9IGZyb20gIkAvbGliL3BkZi12aWV3ZXItY29udGV4dCI7CmltcG9ydCB7IFRFTUFfSU5MSU5FX1NDUklQVCB9IGZyb20gIkAvbGliL3RoZW1lIjsKaW1wb3J0IHsgZ2V0UGVyZmlsU2Vydmlkb3IgfSBmcm9tICJAL2xpYi9hdXRoLXNlcnZlciI7CmltcG9ydCAiLi9nbG9iYWxzLmNzcyI7CgovLyBuZXh0L2ZvbnQvZ29vZ2xlIGRlc2NhcmdhIHkgc2VsZi1ob3N0ZWEgbGFzIGZ1ZW50ZXMgZW4gYnVpbGQgdGltZSAoZW4gdmV6Ci8vIGRlIHBlZGlybGFzIGEgZm9udHMuZ29vZ2xlYXBpcy5jb20gZW4gY2FkYSB2aXNpdGEpOiBlbGltaW5hIGxhIHNvbGljaXR1ZAovLyBleHRlcm5hIHJlbmRlci1ibG9ja2luZyBxdWUgYW50ZXMgaGFjaWFuIGxvcyA8bGluayByZWw9InN0eWxlc2hlZXQiPiBlbgovLyA8aGVhZD4gKG1hcyBsb3MgZG9zIDxsaW5rIHJlbD0icHJlY29ubmVjdCI+KSB5IGV2aXRhIGVsIHBhcnBhZGVvIGRlCi8vIGZ1ZW50ZSAoRk9VVC9GT0lUKSwgcG9ycXVlIE5leHQgaW55ZWN0YSBlbCBAZm9udC1mYWNlIGNvbiBsb3MgYXJjaGl2b3MgeWEKLy8gc2Vydmlkb3MgZGVzZGUgZWwgbWlzbW8gb3JpZ2VuLiBMb3Mgbm9tYnJlcyBkZSB2YXJpYWJsZQovLyAoLS1mb250LWludGVyIC8gLS1mb250LWluc3RydW1lbnQtc2VyaWYpIHNlIGNvbnN1bWVuIGRlc2RlIC0tZm9udC1zYW5zIHkKLy8gLS1mb250LXNlcmlmIGVuIGdsb2JhbHMuY3NzLCBhc2kgcXVlIGVsIHJlc3RvIGRlbCBjb2RpZ28gKFRhaWx3aW5kCi8vIGZvbnRGYW1pbHkuc2Fucy9zZXJpZiwgbGEgY2xhc2UgLmRpc3BsYXksIGV0Yy4pIG5vIGNhbWJpYS4KY29uc3QgaW50ZXIgPSBJbnRlcih7CiAgc3Vic2V0czogWyJsYXRpbiJdLAogIHdlaWdodDogWyIzMDAiLCAiNDAwIiwgIjUwMCIsICI2MDAiLCAiNzAwIl0sCiAgdmFyaWFibGU6ICItLWZvbnQtaW50ZXIiLAogIGRpc3BsYXk6ICJzd2FwIiwKfSk7Cgpjb25zdCBpbnN0cnVtZW50U2VyaWYgPSBJbnN0cnVtZW50X1NlcmlmKHsKICBzdWJzZXRzOiBbImxhdGluIl0sCiAgd2VpZ2h0OiAiNDAwIiwKICBzdHlsZTogWyJub3JtYWwiLCAiaXRhbGljIl0sCiAgdmFyaWFibGU6ICItLWZvbnQtaW5zdHJ1bWVudC1zZXJpZiIsCiAgZGlzcGxheTogInN3YXAiLAp9KTsKCmV4cG9ydCBjb25zdCBtZXRhZGF0YTogTWV0YWRhdGEgPSB7CiAgdGl0bGU6ICJhdXRvbWF0aWsuaW8g4oCUIEdlc3Rpw7NuIGRlIHBlZGlkb3MiLAogIGRlc2NyaXB0aW9uOiAiUGFuZWwgZGUgZ2VzdGnDs24gZGUgcGVkaWRvcyBwYXJhIG1hcmtldHBsYWNlcyIsCiAgbWFuaWZlc3Q6ICIvbWFuaWZlc3QuanNvbiIsCiAgYXBwbGVXZWJBcHA6IHsKICAgIGNhcGFibGU6IHRydWUsCiAgICBzdGF0dXNCYXJTdHlsZTogImJsYWNrLXRyYW5zbHVjZW50IiwKICAgIHRpdGxlOiAiQXV0b21hdGlrIiwKICB9LAp9OwoKZXhwb3J0IGNvbnN0IHZpZXdwb3J0OiBWaWV3cG9ydCA9IHsKICB3aWR0aDogImRldmljZS13aWR0aCIsCiAgaW5pdGlhbFNjYWxlOiAxLAogIG1heGltdW1TY2FsZTogNSwKICAvLyBBbnRlcyBxdWVkYWJhIGVuICIjZmFmYWY4IiAoaGVyZWRhZG8gZGUgbGEgcGxhbnRpbGxhIGRlIE5leHQsIHRlbWEKICAvLyBjbGFybykgbWllbnRyYXMgbGEgYXBwIGVudGVyYSB1c2EgdW4gZm9uZG8gb3NjdXJvIC0tIHNlIG5vdGFiYSBjb21vIHVuYQogIC8vIGZyYW5qYSBibGFuY2EgZW4gbGEgYmFycmEgZGUgZXN0YWRvL2RpcmVjY2lvbmVzIGVuIG1vYmlsZSB5IGNvbW8gZm9uZG8KICAvLyBkZSBzcGxhc2ggc2NyZWVuIGFsIGFicmlyIGxhIFBXQSBpbnN0YWxhZGEuIEFob3JhIGNvaW5jaWRlIGNvbgogIC8vIC0tYmFja2dyb3VuZCAoaHNsKDIzMCAxNSUgNyUpKS4KICB0aGVtZUNvbG9yOiAiIzBmMTAxNSIsCn07CgovLyBUYXJlYSAoU3BlZWQgSW5zaWdodHMgbcOzdmlsLCAyMDI2LTA5LTEwKTogUm9vdExheW91dCBlbnZ1ZWx2ZSBUT0RBUyBsYXMKLy8gcnV0YXMsIGFzw60gcXVlIHVuIGF3YWl0IGJsb3F1ZWFudGUgYWPDoSAoZ2V0UGVyZmlsU2Vydmlkb3I6IGF1dGguZ2V0VXNlcigpCi8vICsgY29uc3VsdGEgYSB1c3Vhcmlvc19yb2xlcykgcmV0cmFzYWJhIGVsIHByaW1lciBieXRlIGRlIEhUTUwgZGUgQ0FEQQovLyBww6FnaW5hIGRlIGxhIGFwcCwgaW5jbHVpZGFzIGxhcyBxdWUgbm8gbmVjZXNpdGFuIGVzZSBkYXRvIHBhcmEgcGludGFyIC0tCi8vIGVqLiAiL3BlZGlkb3MiIChwdXJvICJ1c2UgY2xpZW50IiwgY2VybyBhZGVsYW50byBkZWwgbGFkbyBkZWwgc2Vydmlkb3IpCi8vIG1lZMOtYSA5MSBlbiBTcGVlZCBJbnNpZ2h0cyBhbnRlcyBkZSBxdWUgZXhpc3RpZXJhIGVzdGUgYWRlbGFudG8gZW4KLy8gUm9vdExheW91dCwgeSBhaG9yYSBtaWRlIDY0IHNpbiBoYWJlciBjYW1iaWFkbyBlbiBzw60gbWlzbWE6IGVsIGN1ZWxsbyBkZQovLyBib3RlbGxhIG5vIGVzdGFiYSBlbiBlc2EgcMOhZ2luYSwgZXN0YWJhIGVuIGVsIGxheW91dCBxdWUgbGEgZW52dWVsdmUuIEVuCi8vIG3Ds3ZpbCAoU3VwYWJhc2UgZW4gdXMtd2VzdC0yLCBmdW5jacOzbiBkZSBWZXJjZWwgZW4gaWFkMSwgdmlzaXRhbnRlIGVuCi8vIENoaWxlKSBlc2UgYXdhaXQgc2luIFN1c3BlbnNlIGVzdGFiYSBlbXB1amFuZG8gZWwgRkNQIHJlYWwgYSB+NS41cyBlbiBsYXMKLy8gdHJlcyBydXRhcyBtZWRpZGFzIChSRVMgNTUgYWdyZWdhZG8pLgovLwovLyBNaXNtbyBmaXggcXVlIHlhIHNlIGFwbGljw7MgZW4gYXBwL3BhZ2UudHN4IHkgYXBwL3BlZGlkb3MvW2lkXS9wYWdlLnRzeDoKLy8gYWlzbGFyIGVsIGF3YWl0IGVuIHVuIFNlcnZlciBDb21wb25lbnQgaGlqbyAoUm9vdFNoZWxsQ29udGVudCkgZGVudHJvIGRlCi8vIDxTdXNwZW5zZT4sIHBhcmEgcXVlIDxodG1sPi88aGVhZD4vPGJvZHk+IHNhbGdhbiBkZSBpbm1lZGlhdG8geSBlbCByZXN0bwovLyAoUm9sZVByb3ZpZGVyICsgY2hpbGRyZW4sIGNvbiBvIHNpbiBwZXJmaWwgYWRlbGFudGFkbykgbGxlZ3VlIGVuIHVuIGNodW5rCi8vIGFwYXJ0ZS4gRWwgZmFsbGJhY2sgZXMgPFJvbGVQcm92aWRlciBpbml0aWFsUHJvZmlsZT17bnVsbH0+LCBlbCBtaXNtbwovLyBlc3RhZG8gInNpbiBhZGVsYW50byIgcXVlIFJvbGVQcm92aWRlciB5YSBzYWLDrWEgbWFuZWphciBhbnRlcyBkZSBxdWUKLy8gZXhpc3RpZXJhIGVzdGUgYWRlbGFudG8gc2VydmVyLXNpZGUgKGNhcmdhIHN1IHByb3BpbyBwZXJmaWwgZW4gZWwKLy8gY2xpZW50ZSBhbCBtb250YXIsIGlndWFsIHF1ZSB5YSBoYWPDrWEgY29uIGVsIGNhY2jDqSBkZSBsb2NhbFN0b3JhZ2UpLgovLyBDb21vIGdldFBlcmZpbFNlcnZpZG9yKCkgdXNhIGNhY2hlKCkgZGUgUmVhY3QsIHNpIGFsZ3VuYSBww6FnaW5hIChlai4gIi8iKQovLyB0YW1iacOpbiBsbyBsbGFtYSBlbiBlbCBtaXNtbyByZXF1ZXN0LCBzaWd1ZSBzaW4gZHVwbGljYXIgbGEgY29uc3VsdGEgYQovLyBTdXBhYmFzZS4KYXN5bmMgZnVuY3Rpb24gUm9vdFNoZWxsQ29udGVudCh7IGNoaWxkcmVuIH06IHsgY2hpbGRyZW46IFJlYWN0LlJlYWN0Tm9kZSB9KSB7CiAgY29uc3QgcGVyZmlsSW5pY2lhbCA9IGF3YWl0IGdldFBlcmZpbFNlcnZpZG9yKCk7CiAgcmV0dXJuICgKICAgIDxSb2xlUHJvdmlkZXIgaW5pdGlhbFByb2ZpbGU9e3BlcmZpbEluaWNpYWx9PgogICAgICB7LyogVmlzb3IgZGUgUERGIGVuIHBhbnRhbGxhIGNvbXBsZXRhIChwZGYuanMgc29icmUgY2FudmFzKSwgbW9udGFkbwogICAgICAgICAgdW5hIHNvbGEgdmV6IHBhcmEgdG9kYSBsYSBhcHAgLS0gdmVyIHNyYy9saWIvcGRmLXZpZXdlci1jb250ZXh0LnRzeAogICAgICAgICAgeSBlbCBjb21lbnRhcmlvICJub3ZlbmEgdnVlbHRhIiBlbiBzcmMvbGliL3BkZi50cy4gKi99CiAgICAgIDxQZGZWaWV3ZXJQcm92aWRlcj57Y2hpbGRyZW59PC9QZGZWaWV3ZXJQcm92aWRlcj4KICAgIDwvUm9sZVByb3ZpZGVyPgogICk7Cn0KCmV4cG9ydCBkZWZhdWx0IGZ1bmN0aW9uIFJvb3RMYXlvdXQoeyBjaGlsZHJlbiB9OiB7IGNoaWxkcmVuOiBSZWFjdC5SZWFjdE5vZGUgfSkgewogIHJldHVybiAoCiAgICA8aHRtbCBsYW5nPSJlcyIgY2xhc3NOYW1lPXtgJHtpbnRlci52YXJpYWJsZX0gJHtpbnN0cnVtZW50U2VyaWYudmFyaWFibGV9YH0+CiAgICAgIDxoZWFkPgogICAgICAgIHsvKiBBcGxpY2EgbGEgY2xhc2UgLmxpZ2h0IChzaSBlbCB1c3VhcmlvIGxhIGVsaWdpbyBlbiBDb25maWd1cmFjaW9uCiAgICAgICAgICAgID4gQXBhcmllbmNpYSkgYW50ZXMgZGVsIHByaW1lciBwYWludCAtLSB2ZXIgc3JjL2xpYi90aGVtZS50cyAqL30KICAgICAgICA8c2NyaXB0IGRhbmdlcm91c2x5U2V0SW5uZXJIVE1MPXt7IF9faHRtbDogVEVNQV9JTkxJTkVfU0NSSVBUIH19IC8+CiAgICAgIDwvaGVhZD4KICAgICAgPGJvZHkgY2xhc3NOYW1lPSJtaW4taC1zY3JlZW4gYmctYmFja2dyb3VuZCBmb250LXNhbnMgdGV4dC1mb3JlZ3JvdW5kIGFudGlhbGlhc2VkIj4KICAgICAgICA8UHdhUmVnaXN0ZXIgLz4KICAgICAgICA8U3VzcGVuc2UKICAgICAgICAgIGZhbGxiYWNrPXsKICAgICAgICAgICAgPFJvbGVQcm92aWRlciBpbml0aWFsUHJvZmlsZT17bnVsbH0+CiAgICAgICAgICAgICAgPFBkZlZpZXdlclByb3ZpZGVyPntjaGlsZHJlbn08L1BkZlZpZXdlclByb3ZpZGVyPgogICAgICAgICAgICA8L1JvbGVQcm92aWRlcj4KICAgICAgICAgIH0KICAgICAgICA+CiAgICAgICAgICA8Um9vdFNoZWxsQ29udGVudD57Y2hpbGRyZW59PC9Sb290U2hlbGxDb250ZW50PgogICAgICAgIDwvU3VzcGVuc2U+CiAgICAgICAgPFNwZWVkSW5zaWdodHMgLz4KICAgICAgPC9ib2R5PgogICAgPC9odG1sPgogICk7Cn0K
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
+import { Inter, Instrument_Serif } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { RoleProvider } from "@/lib/role-context";
+import { PwaRegister } from "@/components/pwa-register";
+import { PdfViewerProvider } from "@/lib/pdf-viewer-context";
+import { TEMA_INLINE_SCRIPT } from "@/lib/theme";
+import { getPerfilServidor } from "@/lib/auth-server";
+import "./globals.css";
+
+// next/font/google descarga y self-hostea las fuentes en build time (en vez
+// de pedirlas a fonts.googleapis.com en cada visita): elimina la solicitud
+// externa render-blocking que antes hacian los <link rel="stylesheet"> en
+// <head> (mas los dos <link rel="preconnect">) y evita el parpadeo de
+// fuente (FOUT/FOIT), porque Next inyecta el @font-face con los archivos ya
+// servidos desde el mismo origen. Los nombres de variable
+// (--font-inter / --font-instrument-serif) se consumen desde --font-sans y
+// --font-serif en globals.css, asi que el resto del codigo (Tailwind
+// fontFamily.sans/serif, la clase .display, etc.) no cambia.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "automatik.io — Gestión de pedidos",
+  description: "Panel de gestión de pedidos para marketplaces",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Automatik",
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  // Antes quedaba en "#fafaf8" (heredado de la plantilla de Next, tema
+  // claro) mientras la app entera usa un fondo oscuro -- se notaba como una
+  // franja blanca en la barra de estado/direcciones en mobile y como fondo
+  // de splash screen al abrir la PWA instalada. Ahora coincide con
+  // --background (hsl(230 15% 7%)).
+  themeColor: "#0f1015",
+};
+
+// Tarea (Speed Insights móvil, 2026-09-10): RootLayout envuelve TODAS las
+// rutas, así que un await bloqueante acá (getPerfilServidor: auth.getUser()
+// + consulta a usuarios_roles) retrasaba el primer byte de HTML de CADA
+// página de la app, incluidas las que no necesitan ese dato para pintar --
+// ej. "/pedidos" (puro "use client", cero adelanto del lado del servidor)
+// medía 91 en Speed Insights antes de que existiera este adelanto en
+// RootLayout, y ahora mide 64 sin haber cambiado en sí misma: el cuello de
+// botella no estaba en esa página, estaba en el layout que la envuelve. En
+// móvil (Supabase en us-west-2, función de Vercel en iad1, visitante en
+// Chile) ese await sin Suspense estaba empujando el FCP real a ~5.5s en las
+// tres rutas medidas (RES 55 agregado).
+//
+// Mismo fix que ya se aplicó en app/page.tsx y app/pedidos/[id]/page.tsx:
+// aislar el await en un Server Component hijo (RootShellContent) dentro de
+// <Suspense>, para que <html>/<head>/<body> salgan de inmediato y el resto
+// (RoleProvider + children, con o sin perfil adelantado) llegue en un chunk
+// aparte. El fallback es <RoleProvider initialProfile={null}>, el mismo
+// estado "sin adelanto" que RoleProvider ya sabía manejar antes de que
+// existiera este adelanto server-side (carga su propio perfil en el
+// cliente al montar, igual que ya hacía con el caché de localStorage).
+// Como getPerfilServidor() usa cache() de React, si alguna página (ej. "/")
+// también lo llama en el mismo request, sigue sin duplicar la consulta a
+// Supabase.
+async function RootShellContent({ children }: { children: React.ReactNode }) {
+  const perfilInicial = await getPerfilServidor();
+  return (
+    <RoleProvider initialProfile={perfilInicial}>
+      {/* Visor de PDF en pantalla completa (pdf.js sobre canvas), montado
+          una sola vez para toda la app -- ver src/lib/pdf-viewer-context.tsx
+          y el comentario "novena vuelta" en src/lib/pdf.ts. */}
+      <PdfViewerProvider>{children}</PdfViewerProvider>
+    </RoleProvider>
+  );
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="es" className={`${inter.variable} ${instrumentSerif.variable}`}>
+      <head>
+        {/* Aplica la clase .light (si el usuario la eligio en Configuracion
+            > Apariencia) antes del primer paint -- ver src/lib/theme.ts */}
+        <script dangerouslySetInnerHTML={{ __html: TEMA_INLINE_SCRIPT }} />
+      </head>
+      <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        <PwaRegister />
+        <Suspense
+          fallback={
+            <RoleProvider initialProfile={null}>
+              <PdfViewerProvider>{children}</PdfViewerProvider>
+            </RoleProvider>
+          }
+        >
+          <RootShellContent>{children}</RootShellContent>
+        </Suspense>
+        <SpeedInsights />
+      </body>
+    </html>
+  );
+}
